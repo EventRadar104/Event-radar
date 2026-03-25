@@ -1,0 +1,38 @@
+{
+  "node": {
+    "40aad53897b6cb073561f46e59116e54cc8c579893": {
+      "workers": {
+        "app/page": {
+          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Civerb%5C%5CDownloads%5C%5Cevent-radar-v3%5C%5Cevent-radar-nextjs%5C%5Clib%5C%5Cqueries.ts%22%2C%5B%5B%2240aad53897b6cb073561f46e59116e54cc8c579893%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%2C%5B%2240d9891963e1886ba81b69c26456484908ed68843d%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        },
+        "app/events/[slug]/page": {
+          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Civerb%5C%5CDownloads%5C%5Cevent-radar-v3%5C%5Cevent-radar-nextjs%5C%5Clib%5C%5Cqueries.ts%22%2C%5B%5B%2240aad53897b6cb073561f46e59116e54cc8c579893%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%2C%5B%2240d9891963e1886ba81b69c26456484908ed68843d%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/page": "rsc",
+        "app/events/[slug]/page": "rsc"
+      }
+    },
+    "40d9891963e1886ba81b69c26456484908ed68843d": {
+      "workers": {
+        "app/page": {
+          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Civerb%5C%5CDownloads%5C%5Cevent-radar-v3%5C%5Cevent-radar-nextjs%5C%5Clib%5C%5Cqueries.ts%22%2C%5B%5B%2240aad53897b6cb073561f46e59116e54cc8c579893%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%2C%5B%2240d9891963e1886ba81b69c26456484908ed68843d%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        },
+        "app/events/[slug]/page": {
+          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Civerb%5C%5CDownloads%5C%5Cevent-radar-v3%5C%5Cevent-radar-nextjs%5C%5Clib%5C%5Cqueries.ts%22%2C%5B%5B%2240aad53897b6cb073561f46e59116e54cc8c579893%22%2C%22%24%24RSC_SERVER_ACTION_0%22%5D%2C%5B%2240d9891963e1886ba81b69c26456484908ed68843d%22%2C%22%24%24RSC_SERVER_ACTION_1%22%5D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/page": "rsc",
+        "app/events/[slug]/page": "rsc"
+      }
+    }
+  },
+  "edge": {},
+  "encryptionKey": "EqIhgqtMJkdY/yRSaDRyOxgipWZL6giu1aHCv6W80NE="
+}
