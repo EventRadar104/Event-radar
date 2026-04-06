@@ -99,7 +99,7 @@ export default async function DashboardPage({
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:28 }}>
               <StatCard label="Views (30d)"     value={totalViews.toLocaleString('nb-NO')}  trend="↑ 14% this week" />
               <StatCard label="Event saves"     value={totalSaves.toLocaleString('nb-NO')}  trend="↑ 8% this week" />
-              <StatCard label="Attending"       value={totalAttend.toLocaleString('nb-NO')} trend='People clicked "I\'m attending"' trendMuted />
+              <StatCard label="Attending"       value={totalAttend.toLocaleString('nb-NO')} trend={`People clicked "I'm attending"`} trendMuted />
               <StatCard label="Active events"   value={String(activeEvents)}                trend={`${stats.length} total`} trendMuted />
             </div>
 
