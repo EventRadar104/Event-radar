@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getEventBySlug, getRsvpCount, getUserEventState } from '@/lib/queries'
 import { RsvpButton } from '@/components/RsvpButton'
 import { SaveButton } from '@/components/SaveButton'
+import { ShareButton } from '@/components/ShareButton'
 import ViewTracker from './ViewTracker'
 
 interface PageProps {
@@ -15,7 +16,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params
   const event = await getEventBySlug(slug)
   if (!event) return { title: 'Event not found — Event Radar' }
-
   return {
     title: `${event.title} — Event Radar`,
     description: event.description?.slice(0, 160) ?? undefined,
@@ -30,27 +30,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function EventDetailPage({ params }: PageProps) {
   const { slug } = await params
-
-  const [event, rsvpCount, userState] = await Promise.all([
+  const [event, , userState] = await Promise.all([
     getEventBySlug(slug),
-    getRsvpCount(slug),   // will re-run with event.id below
+    getRsvpCount(slug),
     getUserEventState(slug),
   ])
-
   if (!event) notFound()
 
-  // Correct counts after we have the real event id
-  const [realCount] = await Promise.all([
-    getRsvpCount(event.id),
-  ])
+  const [realCount] = await Promise.all([getRsvpCount(event.id)])
 
   const price = event.is_free
     ? { text: 'Free', free: true }
     : event.price_from && event.price_to
-      ? { text: `${event.price_from}–${event.price_to} kr`, free: false }
-      : event.price_from
-        ? { text: `from ${event.price_from} kr`, free: false }
-        : { text: 'See organiser', free: false }
+    ? { text: `${event.price_from}–${event.price_to} kr`, free: false }
+    : event.price_from
+    ? { text: `from ${event.price_from} kr`, free: false }
+    : { text: 'See organiser', free: false }
 
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     [event.venue_name, event.venue_city, 'Norway'].filter(Boolean).join(', ')
@@ -74,69 +69,34 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   return (
     <>
-      {/* Track view impression client-side */}
       <ViewTracker eventId={event.id} referrer="direct" />
-
-      {/* ── HERO ─────────────────────────── */}
       <div style={{ position:'relative', height:380, overflow:'hidden' }} className={catClass}>
         {event.cover_image_url ? (
-          <Image
-            src={event.cover_image_url}
-            alt={event.title}
-            fill
-            style={{ objectFit:'cover' }}
-            priority
-            sizes="100vw"
-          />
+          <Image src={event.cover_image_url} alt={event.title} fill style={{ objectFit:'cover' }} priority sizes="100vw" />
         ) : (
           <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, textAlign:'center', padding:24 }}>
             <div style={{ fontSize:72, opacity:.6 }}>
-              {event.category_slugs?.[0]?.includes('music') ? '🎵'
-                : event.category_slugs?.[0]?.includes('sport') ? '⚽'
-                : event.category_slugs?.[0]?.includes('food') ? '🍽️'
-                : '📅'}
+              {event.category_slugs?.[0]?.includes('music') ? '🎵' : event.category_slugs?.[0]?.includes('sport') ? '⚽' : event.category_slugs?.[0]?.includes('food') ? '🍽️' : '📅'}
             </div>
             <div style={{ fontSize:18, fontWeight:500, color:'rgba(255,255,255,.7)', maxWidth:500, lineHeight:1.3 }}>{event.title}</div>
           </div>
         )}
-
-        {/* Back button */}
-        <Link href="/" style={{
-          position:'absolute', top:16, left:16, zIndex:10,
-          background:'rgba(255,255,255,.92)', backdropFilter:'blur(8px)',
-          border:'none', borderRadius:40, padding:'8px 14px',
-          fontSize:13, fontWeight:500, textDecoration:'none', color:'var(--ink)',
-          display:'flex', alignItems:'center', gap:6,
-        }}>
+        <Link href="/" style={{ position:'absolute', top:16, left:16, zIndex:10, background:'rgba(255,255,255,.92)', backdropFilter:'blur(8px)', border:'none', borderRadius:40, padding:'8px 14px', fontSize:13, fontWeight:500, textDecoration:'none', color:'var(--ink)', display:'flex', alignItems:'center', gap:6 }}>
           ← Back
         </Link>
-
-        {/* Save button */}
         <SaveButton eventId={event.id} initialSaved={userState.isFavorite} variant="detail" />
       </div>
 
-      {/* ── BODY ─────────────────────────── */}
       <div style={{ maxWidth:720, margin:'0 auto', padding:'32px 24px 100px' }}>
-
-        {/* Category */}
         <div style={{ fontSize:12, fontWeight:500, color:'var(--green)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>
           {event.category_names?.[0] ?? ''}
         </div>
-
-        {/* Title */}
         <h1 style={{ fontSize:'clamp(26px,4vw,40px)', marginBottom:16 }}>{event.title}</h1>
 
-        {/* Attending row */}
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24, flexWrap:'wrap' }}>
           <div style={{ display:'flex' }}>
             {['AS','MJ','KN','+'].map((init, i) => (
-              <div key={i} style={{
-                width:28, height:28, borderRadius:'50%',
-                background:'var(--stone)', border:'2px solid var(--white)',
-                display:'flex', alignItems:'center', justifyContent:'center',
-                fontSize:11, fontWeight:600, color:'var(--ink3)',
-                marginLeft: i === 0 ? 0 : -8,
-              }}>
+              <div key={i} style={{ width:28, height:28, borderRadius:'50%', background:'var(--stone)', border:'2px solid var(--white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:600, color:'var(--ink3)', marginLeft: i === 0 ? 0 : -8 }}>
                 {init}
               </div>
             ))}
@@ -147,112 +107,63 @@ export default async function EventDetailPage({ params }: PageProps) {
           <RsvpButton eventId={event.id} initialStatus={userState.rsvpStatus} initialCount={realCount} />
         </div>
 
-        {/* Ticket box */}
-        <div style={{
-          background:'var(--white)', border:'1.5px solid var(--border)',
-          borderRadius:16, padding:24,
-          display:'flex', alignItems:'center', justifyContent:'space-between', gap:16,
-          marginBottom:24,
-        }}>
+        <div style={{ background:'var(--white)', border:'1.5px solid var(--border)', borderRadius:16, padding:24, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, marginBottom:24 }}>
           <div>
-            <div style={{
-              fontSize:28, fontFamily:'var(--font-serif)',
-              color: price.free ? 'var(--green)' : 'var(--ink)',
-            }}>
-              {price.text}
-            </div>
+            <div style={{ fontSize:28, fontFamily:'var(--font-serif)', color: price.free ? 'var(--green)' : 'var(--ink)' }}>{price.text}</div>
             <div style={{ fontSize:13, color:'var(--ink3)', marginTop:2 }}>
               {event.is_free ? 'No tickets needed — just show up' : 'Tickets via external provider'}
             </div>
           </div>
           {!event.is_free && event.ticket_url && (
-            <a
-              href={event.ticket_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                background:'var(--green)', color:'#fff', border:'none',
-                borderRadius:12, padding:'14px 28px', fontSize:16, fontWeight:500,
-                textDecoration:'none', flexShrink:0,
-              }}
-            >
+            <a href={event.ticket_url} target="_blank" rel="noopener noreferrer" style={{ background:'var(--green)', color:'#fff', border:'none', borderRadius:12, padding:'14px 28px', fontSize:16, fontWeight:500, textDecoration:'none', flexShrink:0 }}>
               Get tickets →
             </a>
           )}
         </div>
 
-        {/* Meta grid */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:28 }}>
           <MetaCard icon="📅" label="Date & Time" value={formattedDate} sub={event.ends_at ? `Ends ${new Date(event.ends_at).toLocaleDateString('en-GB', { hour:'2-digit', minute:'2-digit' })}` : 'Check organiser for times'} />
-          <MetaCard
-            icon="📍"
-            label="Location"
-            value={event.venue_name ?? event.venue_city ?? 'TBC'}
-            sub={[event.venue_city, 'Norway'].filter(Boolean).join(', ')}
-            link={{ href: mapsUrl, label: 'Open in Google Maps' }}
-          />
+          <MetaCard icon="📍" label="Location" value={event.venue_name ?? event.venue_city ?? 'TBC'} sub={[event.venue_city, 'Norway'].filter(Boolean).join(', ')} link={{ href: mapsUrl, label: 'Open in Google Maps' }} />
         </div>
 
-        {/* Description */}
         {event.description && (
-          <p style={{ fontSize:15, color:'var(--ink2)', lineHeight:1.7, marginBottom:28 }}>
-            {event.description}
-          </p>
+          <p style={{ fontSize:15, color:'var(--ink2)', lineHeight:1.7, marginBottom:28 }}>{event.description}</p>
         )}
 
-        {/* Tags */}
         {event.tags && event.tags.length > 0 && (
           <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:28 }}>
             {event.tags.map(tag => (
-              <Link key={tag} href={`/?q=${encodeURIComponent(tag)}`} style={{
-                background:'var(--stone)', border:'1px solid var(--border)',
-                borderRadius:20, padding:'4px 12px', fontSize:12, color:'var(--ink2)',
-                textDecoration:'none',
-              }}>
+              <Link key={tag} href={`/?q=${encodeURIComponent(tag)}`} style={{ background:'var(--stone)', border:'1px solid var(--border)', borderRadius:20, padding:'4px 12px', fontSize:12, color:'var(--ink2)', textDecoration:'none' }}>
                 #{tag}
               </Link>
             ))}
           </div>
         )}
 
-        {/* Share row */}
         <div style={{ display:'flex', gap:8, marginBottom:28 }}>
           <ShareButton icon="↗" label="Share event" />
-          <Link href="/groups" style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', border:'1px solid var(--border)', borderRadius:20, fontSize:13, color:'var(--ink)', textDecoration:'none', transition:'all .15s' }}>
+          <Link href="/groups" style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', border:'1px solid var(--border)', borderRadius:20, fontSize:13, color:'var(--ink)', textDecoration:'none' }}>
             👥 Add to group
           </Link>
           <SaveButton eventId={event.id} initialSaved={userState.isFavorite} variant="card" />
         </div>
 
-        {/* Organiser */}
         {event.organizer_name && (
-          <div style={{
-            background:'var(--white)', border:'1px solid var(--border)',
-            borderRadius:12, padding:16,
-            display:'flex', alignItems:'center', gap:14,
-          }}>
-            <div style={{
-              width:44, height:44, borderRadius:'50%',
-              background:'var(--green-lt)', display:'flex', alignItems:'center',
-              justifyContent:'center', fontSize:14, fontWeight:600, color:'var(--green)', flexShrink:0,
-            }}>
+          <div style={{ background:'var(--white)', border:'1px solid var(--border)', borderRadius:12, padding:16, display:'flex', alignItems:'center', gap:14 }}>
+            <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--green-lt)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:600, color:'var(--green)', flexShrink:0 }}>
               {event.organizer_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
             </div>
             <div>
               <div style={{ fontSize:15, fontWeight:500, marginBottom:2 }}>{event.organizer_name}</div>
               <div style={{ fontSize:12, color:'var(--ink3)' }}>Organiser · Event Radar</div>
             </div>
-            <button style={{ marginLeft:'auto', background:'none', border:'1.5px solid var(--border)', borderRadius:20, padding:'7px 14px', fontSize:13, cursor:'pointer' }}>
-              Follow
-            </button>
+            <button style={{ marginLeft:'auto', background:'none', border:'1.5px solid var(--border)', borderRadius:20, padding:'7px 14px', fontSize:13, cursor:'pointer' }}>Follow</button>
           </div>
         )}
       </div>
     </>
   )
 }
-
-// ── Sub-components ────────────────────────
 
 function MetaCard({ icon, label, value, sub, link }: {
   icon: string; label: string; value: string; sub?: string
@@ -271,21 +182,5 @@ function MetaCard({ icon, label, value, sub, link }: {
         </a>
       )}
     </div>
-  )
-}
-
-function ShareButton({ icon, label }: { icon: string; label: string }) {
-  return (
-    <button style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', border:'1px solid var(--border)', borderRadius:20, fontSize:13, cursor:'pointer', background:'none', transition:'all .15s' }}
-      onClick={() => {
-        if (navigator.share) {
-          navigator.share({ title: document.title, url: window.location.href })
-        } else {
-          navigator.clipboard?.writeText(window.location.href)
-        }
-      }}
-    >
-      {icon} {label}
-    </button>
   )
 }
