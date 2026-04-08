@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { searchEvents } from '@/lib/queries'
+import { searchEvents, getPublishedEventCount } from '@/lib/queries'
 import { EventCard } from '@/components/EventCard'
 import type { SearchParams } from '@/lib/types'
 
@@ -24,7 +24,10 @@ interface PageProps {
 
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams
-  const events = await searchEvents(params)
+  const [events, totalCount] = await Promise.all([
+  searchEvents(params),
+  getPublishedEventCount(),
+])
 
   const activeCity = params.city ?? ''
   const activeCat  = params.cat  ?? ''
@@ -38,7 +41,7 @@ export default async function HomePage({ searchParams }: PageProps) {
         padding: '52px 24px 44px', textAlign: 'center',
       }}>
         <div style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:500, color:'var(--ink3)', letterSpacing:'.04em', textTransform:'uppercase', marginBottom:18 }}>
-          🇳🇴 <span style={{ color:'var(--ink)' }}>Norway</span> · 1,240+ events this month
+          🇳🇴 <span style={{ color:'var(--ink)' }}>Norway</span> · {totalCount}+ events
         </div>
         <h1 style={{ fontSize:'clamp(32px,5vw,60px)', maxWidth:640, margin:'0 auto 14px' }}>
           Find your next<br /><em style={{ fontStyle:'italic', color:'var(--green)' }}>favourite event</em>
