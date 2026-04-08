@@ -21,7 +21,7 @@ export async function searchEvents(params: SearchParams = {}) {
       from_date:    params.from || '2020-01-01T00:00:00Z',
       to_date:      params.to   || null,
       only_free:    params.free === 'true',
-      result_limit: 24,
+      result_limit: 48,
       result_offset: (parseInt(params.page || '1', 10) - 1) * 24,
     })
     if (error) {
