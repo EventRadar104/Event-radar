@@ -152,7 +152,7 @@ export default async function HomePage({ searchParams }: PageProps) {
         </Suspense>
 
         {/* Pagination */}
-        {events.length === 24 && (
+        {events.length === 48 && (
           <div style={{ textAlign:'center', marginTop:32 }}>
             <Link
               href={buildHref(params, { page: String((parseInt(params.page || '1') + 1)) })}
