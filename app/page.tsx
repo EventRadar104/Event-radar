@@ -132,7 +132,7 @@ export default async function HomePage({ searchParams }: PageProps) {
           <h2 style={{ fontSize:22 }}>
             {params.q ? `Results for "${params.q}"` : activeCity ? `Events in ${activeCity}` : 'Events across Norway'}
           </h2>
-          <span style={{ fontSize:13, color:'var(--ink3)' }}>{events.length} found</span>
+          <span style={{ fontSize:13, color:'var(--ink3)' }}>{events.length} events</span>
         </div>
 
         {/* Grid */}
