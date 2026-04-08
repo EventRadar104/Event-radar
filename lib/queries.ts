@@ -212,4 +212,4 @@ export async function getPublishedEventCount(): Promise<number> {
   } catch {
     return 0
   }
-}}
+}
