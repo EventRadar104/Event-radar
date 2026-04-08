@@ -201,6 +201,7 @@ export async function recordView(
   } catch (e) {
     console.error('recordView exception:', e)
   }
+}
 export async function getPublishedEventCount(): Promise<number> {
   try {
     const supabase = await createClient()
