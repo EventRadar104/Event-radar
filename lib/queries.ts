@@ -18,7 +18,7 @@ export async function searchEvents(params: SearchParams = {}) {
       query_text:   params.q    || null,
       filter_city:  params.city || null,
       filter_slug:  params.cat  || null,
-      from_date:    params.from || '2020-01-01T00:00:00Z',
+      from_date: params.from || new Date().toISOString(),
       to_date:      params.to   || null,
       only_free:    params.free === 'true',
       result_limit: 48,
