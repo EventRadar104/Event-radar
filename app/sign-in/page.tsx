@@ -16,7 +16,7 @@ export default async function SignInPage({ searchParams }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const sp = await searchParams
-  const redirectTo = sp.redirect ?? '/dashboard'
+  const redirectTo = sp.redirect ?? '/'
 
   // Already signed in
   if (user) redirect(redirectTo)
