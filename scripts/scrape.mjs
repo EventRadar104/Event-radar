@@ -71,13 +71,11 @@ async function getCatId(slug, cache) {
 async function main() {
   let page = 0, totalPages = 1, total = 0
   const catCache = {}
-
   while (page < totalPages && page < 5) {
     console.log(`Page ${page + 1}/${totalPages}`)
     const data = await fetchPage(page)
     totalPages = Math.min(data.page?.totalPages ?? 1, 5)
     const events = data._embedded?.events ?? []
-
     for (const ev of events) {
       try {
         const venueId = await upsertVenue(ev._embedded?.venues?.[0])
@@ -86,7 +84,6 @@ async function main() {
         const price = ev.priceRanges?.[0]
         const image = ev.images?.find(i => i.ratio === '16_9' && i.width > 1000) ?? ev.images?.[0]
         const slug = makeSlug(ev.name, ev.id)
-
         const { data: saved, error } = await supabase.from('events').upsert({
           title: ev.name,
           slug,
@@ -94,7 +91,7 @@ async function main() {
           cover_image_url: image?.url ?? null,
           starts_at: ev.dates?.start?.dateTime ?? `${ev.dates?.start?.localDate}T20:00:00Z`,
           venue_id: venueId,
-          is_free: !price,
+          is_free: price ? price.min === 0 : false,
           price_from: price?.min ?? null,
           price_to: price?.max ?? null,
           ticket_url: ev.url ?? null,
@@ -104,18 +101,16 @@ async function main() {
           source_id: ev.id,
           language: 'no',
         }, { onConflict: 'source,source_id' }).select('id').single()
-
         if (error) { console.error(ev.name, error.message); continue }
-
         if (saved?.id && catId) {
           await supabase.from('event_categories')
-            .upsert({ event_id: saved.id, category_id: catId },
-              { onConflict: 'event_id,category_id', ignoreDuplicates: true })
+            .upsert({ event_id: saved.id, category_id: catId }, { onConflict: 'event_id,category_id', ignoreDuplicates: true })
         }
         total++
-      } catch (e) { console.error(ev.name, e.message) }
+      } catch (e) {
+        console.error(ev.name, e.message)
+      }
     }
-
     page++
     await new Promise(r => setTimeout(r, 300))
   }
