@@ -38,15 +38,15 @@ function formatPrice(event: EventWithDetails): { text: string; free: boolean } {
   return { text: 'See organiser for price', free: false }
 }
 
-
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', {
-    weekday: 'short', day: 'numeric', month: 'short',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
   })
 }
 
 // ── Grid card (2-column grid on home page) ──
-
 interface EventCardProps {
   event: EventWithDetails
   size?: 'grid' | 'small'
@@ -67,7 +67,7 @@ export function EventCard({ event, size = 'grid' }: EventCardProps) {
         {/* Image */}
         <div style={{ height:120, position:'relative' }} className={phClass}>
           {event.cover_image_url ? (
-            <Image src={event.cover_image_url} alt={event.title} fill style={{ objectFit:'cover' }} sizes="210px" />
+            <Image src={event.cover_image_url} alt={event.title} fill style={{ objectFit:'cover', objectPosition:'center 20%' }} sizes="210px" />
           ) : (
             <PlaceholderContent icon={icon} label={event.title} catName={event.category_names?.[0] ?? ''} />
           )}
@@ -96,7 +96,7 @@ export function EventCard({ event, size = 'grid' }: EventCardProps) {
       {/* Image */}
       <div style={{ height:160, position:'relative' }} className={phClass}>
         {event.cover_image_url ? (
-          <Image src={event.cover_image_url} alt={event.title} fill style={{ objectFit:'cover' }} sizes="(max-width:700px) 100vw, 50vw" />
+          <Image src={event.cover_image_url} alt={event.title} fill style={{ objectFit:'cover', objectPosition:'center 20%' }} sizes="(max-width:700px) 100vw, 50vw" />
         ) : (
           <PlaceholderContent icon={icon} label={event.title} catName={event.category_names?.[0] ?? ''} />
         )}
@@ -137,4 +137,3 @@ function PlaceholderContent({ icon, label, catName }: { icon: string; label: str
     </div>
   )
 }
-
