@@ -8,12 +8,17 @@ export async function Nav() {
 
   return (
     <nav style={{
-      position: 'sticky', top: 0, zIndex: 200,
+      position: 'sticky',
+      top: 0,
+      zIndex: 200,
       background: 'rgba(250,250,248,.94)',
       backdropFilter: 'blur(14px)',
       borderBottom: '1px solid var(--border)',
-      height: 60, display: 'flex', alignItems: 'center',
-      padding: '0 24px', gap: 16,
+      height: 60,
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 24px',
+      gap: 16,
     }}>
       {/* Logo */}
       <Link href="/" style={{ display:'flex', alignItems:'center', gap:8, fontFamily:'var(--font-serif)', fontSize:20, flexShrink:0, textDecoration:'none', color:'var(--ink)' }}>
@@ -31,6 +36,11 @@ export async function Nav() {
         <Link href="/trips" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap' }}>
           Plan a trip
         </Link>
+        {user && (
+          <Link href="/dashboard" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:4 }}>
+            <span>♡</span> Saved
+          </Link>
+        )}
         <Link href="/events/new" style={{ background:'var(--ink)', color:'#fff', border:'none', borderRadius:40, padding:'8px 18px', fontSize:13, fontWeight:500, whiteSpace:'nowrap' }}>
           + Post event
         </Link>
