@@ -66,11 +66,27 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, size = 'grid' }: EventCardProps) {
-  const phClass = categoryToPhClass(event.category_slugs)
-  const icon    = categoryToIcon(event.category_slugs)
-  const accent  = categoryToAccent(event.category_slugs)
-  const price   = formatPrice(event)
-  const href    = `/events/${event.slug ?? event.id}`
+  const phClass   = categoryToPhClass(event.category_slugs)
+  const icon      = categoryToIcon(event.category_slugs)
+  const accent    = categoryToAccent(event.category_slugs)
+  const price     = formatPrice(event)
+  const href      = `/events/${event.slug ?? event.id}`
+  const catLabel  = event.category_names?.[0] ?? 'Event'
+
+  const catBadge = (
+    <div style={{
+      position: 'absolute', bottom: 8, left: 8, zIndex: 2,
+      background: 'rgba(255,255,255,.12)',
+      backdropFilter: 'blur(4px)',
+      color: 'rgba(255,255,255,.85)',
+      fontSize: 10, fontWeight: 600,
+      padding: '3px 8px', borderRadius: 20,
+      border: '1px solid rgba(255,255,255,.2)',
+      letterSpacing: '.06em', textTransform: 'uppercase',
+    }}>
+      {catLabel}
+    </div>
+  )
 
   if (size === 'small') {
     return (
@@ -86,11 +102,9 @@ export function EventCard({ event, size = 'grid' }: EventCardProps) {
           ) : (
             <span style={{ opacity:.6 }}>{icon}</span>
           )}
+          {catBadge}
         </div>
         <div style={{ padding:'11px 12px 0', borderTop: `3px solid ${accent}` }}>
-          <div style={{ fontSize:10, fontWeight:500, color:'var(--green)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:3 }}>
-            {event.category_names?.[0] ?? 'Event'}
-          </div>
           <h4 style={{ fontSize:13, fontWeight:500, marginBottom:4, lineHeight:1.3 }}>{event.title}</h4>
           <div style={{ fontSize:11, color:'var(--ink3)', marginBottom:8 }}>
             {formatDate(event.starts_at)} · {event.venue_name ?? event.venue_city ?? ''}
@@ -116,11 +130,9 @@ export function EventCard({ event, size = 'grid' }: EventCardProps) {
           ) : (
             <span style={{ opacity:.5 }}>{icon}</span>
           )}
+          {catBadge}
         </div>
         <div style={{ padding:'14px 14px 10px', borderTop: `3px solid ${accent}` }}>
-          <div style={{ fontSize:11, fontWeight:500, color:'var(--green)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>
-            {event.category_names?.[0] ?? 'Event'}
-          </div>
           <h4 style={{ fontSize:14, fontWeight:500, marginBottom:6, lineHeight:1.35 }}>{event.title}</h4>
           <div style={{ fontSize:12, color:'var(--ink3)', display:'flex', flexDirection:'column', gap:2 }}>
             <span>{formatDate(event.starts_at)}</span>
