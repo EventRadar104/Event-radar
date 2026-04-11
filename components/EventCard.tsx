@@ -66,23 +66,24 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, size = 'grid' }: EventCardProps) {
-  const phClass   = categoryToPhClass(event.category_slugs)
-  const icon      = categoryToIcon(event.category_slugs)
-  const accent    = categoryToAccent(event.category_slugs)
-  const price     = formatPrice(event)
-  const href      = `/events/${event.slug ?? event.id}`
-  const catLabel  = event.category_names?.[0] ?? 'Event'
+  const phClass  = categoryToPhClass(event.category_slugs)
+  const icon     = categoryToIcon(event.category_slugs)
+  const accent   = categoryToAccent(event.category_slugs)
+  const price    = formatPrice(event)
+  const href     = `/events/${event.slug ?? event.id}`
+  const catLabel = event.category_names?.[0] ?? 'Event'
 
   const catBadge = (
     <div style={{
       position: 'absolute', bottom: 8, left: 8, zIndex: 2,
-      background: 'rgba(255,255,255,.12)',
-      backdropFilter: 'blur(4px)',
-      color: 'rgba(255,255,255,.85)',
+      background: 'rgba(0,0,0,.55)',
+      backdropFilter: 'blur(6px)',
+      WebkitBackdropFilter: 'blur(6px)',
+      color: '#fff',
       fontSize: 10, fontWeight: 600,
-      padding: '3px 8px', borderRadius: 20,
-      border: '1px solid rgba(255,255,255,.2)',
-      letterSpacing: '.06em', textTransform: 'uppercase',
+      padding: '3px 9px', borderRadius: 20,
+      border: '1px solid rgba(255,255,255,.15)',
+      letterSpacing: '.07em', textTransform: 'uppercase',
     }}>
       {catLabel}
     </div>
@@ -110,7 +111,7 @@ export function EventCard({ event, size = 'grid' }: EventCardProps) {
             {formatDate(event.starts_at)} · {event.venue_name ?? event.venue_city ?? ''}
           </div>
         </div>
-        <div style={{ padding:'0 12px 10px', display:'flex', justifyContent:'space-between' }}>
+        <div style={{ padding:'0 12px 10px' }}>
           <span style={{ fontSize:12, fontWeight:600, color: price.free ? 'var(--green)' : 'var(--ink)' }}>{price.text}</span>
         </div>
       </Link>
@@ -139,7 +140,7 @@ export function EventCard({ event, size = 'grid' }: EventCardProps) {
             <span>{event.venue_name ?? event.venue_city ?? ''}</span>
           </div>
         </div>
-        <div style={{ padding:'0 14px 12px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ padding:'0 14px 12px' }}>
           <span style={{ fontSize:13, fontWeight:600, color: price.free ? 'var(--green)' : 'var(--ink)' }}>{price.text}</span>
         </div>
       </Link>
