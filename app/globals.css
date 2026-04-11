@@ -1,6 +1,4 @@
-/* Event Radar — Global styles
-   Matches the prototype's CSS variables and base rules exactly
-   so components are a direct port. */
+/* Event Radar — Global styles */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -23,8 +21,19 @@
   --shadow:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
   --shadow-md:0 2px 8px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
 
-  --font-sans:  var(--font-sans, 'Inter', system-ui, sans-serif);
+  --font-sans:  var(--font-inter, 'Inter', system-ui, sans-serif);
   --font-serif: var(--font-serif, 'Georgia', serif);
+
+  /* Category accent colours */
+  --cat-music:   #7c3aed;
+  --cat-sports:  #1d4ed8;
+  --cat-food:    #c2410c;
+  --cat-arts:    #b45309;
+  --cat-outdoor: #0f766e;
+  --cat-culture: #9d174d;
+  --cat-comedy:  #be185d;
+  --cat-tech:    #0369a1;
+  --cat-other:   #374151;
 }
 
 html {
@@ -40,84 +49,18 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+/* Live pulse animation for nav dot */
+@keyframes livePulse {
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.7); }
+  70%  { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+  100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
 }
 
-button {
-  cursor: pointer;
-  font-family: inherit;
-}
-
-input, select, textarea {
-  font-family: inherit;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-/* ── Utility classes shared across components ── */
-
-.btn-dark {
-  background: var(--ink);
-  color: #fff;
-  border: none;
-  border-radius: 40px;
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity .15s;
-}
-.btn-dark:hover { opacity: .8; }
-
-.btn-green {
-  background: var(--green);
-  color: #fff;
-  border: none;
-  border-radius: 40px;
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity .15s;
-}
-.btn-green:hover { opacity: .88; }
-
-/* Category placeholder gradients */
-.ph-music   { background: linear-gradient(160deg,#1a1225,#2d1f45); }
-.ph-sports  { background: linear-gradient(160deg,#0f1f10,#1a3a1e); }
-.ph-food    { background: linear-gradient(160deg,#1f1005,#3a2010); }
-.ph-arts    { background: linear-gradient(160deg,#0f0f20,#1e1a35); }
-.ph-outdoor { background: linear-gradient(160deg,#0d1a15,#1a3028); }
-.ph-culture { background: linear-gradient(160deg,#1a1010,#321a1a); }
-.ph-comedy  { background: linear-gradient(160deg,#1a1a05,#302e10); }
-.ph-tech    { background: linear-gradient(160deg,#05101a,#10203a); }
-.ph-default { background: linear-gradient(160deg,#111,#222); }
-
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: var(--ink);
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 40px;
-  font-size: 14px;
-  font-weight: 500;
-  z-index: 999;
-  opacity: 0;
-  transition: all .3s;
-  pointer-events: none;
-}
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+.live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #DC2626;
+  animation: livePulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
 }
