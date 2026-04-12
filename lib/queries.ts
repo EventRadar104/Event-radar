@@ -228,7 +228,6 @@ export async function getFeaturedEvent() {
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
       .not('cover_image_url', 'is', null)
-      .not('price_from', 'is', null)
       .order('price_from', { ascending: false })
       .limit(1)
       .single()
