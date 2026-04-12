@@ -230,7 +230,7 @@ export async function getFeaturedEvent() {
       .not('cover_image_url', 'is', null)
       .order('price_from', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
     return data as EventWithDetails | null
   } catch {
     return null
