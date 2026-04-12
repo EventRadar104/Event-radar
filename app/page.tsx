@@ -11,7 +11,7 @@ import {
 import { EventCard } from '@/components/EventCard'
 import { EventRow } from '@/components/EventRow'
 import { HeroEvent } from '@/components/HeroEvent'
-import type { SearchParams } from '@/lib/types'
+import type { SearchParams, EventWithDetails } from '@/lib/types'
 
 const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Tromsø', 'Stavanger', 'Kristiansand']
 const CATEGORIES = [
@@ -51,7 +51,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   ])
 
   const [featured, hotEvents, weekendEvents, freeEvents] = hasFilters
-    ? ([null, [], [], []] as const)
+    ? [null as EventWithDetails | null, [] as EventWithDetails[], [] as EventWithDetails[], [] as EventWithDetails[]]
     : await Promise.all([
         getFeaturedEvent(),
         getHotEvents(12),
