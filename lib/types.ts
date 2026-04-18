@@ -195,4 +195,6 @@ export interface SearchParams {
   to?: string
   free?: string
   page?: string
+  sort?: string
+  weekend?: string
 }
