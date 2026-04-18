@@ -272,7 +272,7 @@ export async function getWeekendEvents(limit = 10) {
       .gte('starts_at', sat.toISOString())
       .lte('starts_at', sun.toISOString())
       .order('starts_at', { ascending: true })
-      .limit(limit)
+      .range(offset, offset + limit - 1)
     return (data ?? []) as EventWithDetails[]
   } catch {
     return []
@@ -289,13 +289,13 @@ export async function getFreeEvents(limit = 10) {
       .eq('is_free', true)
       .gt('starts_at', new Date().toISOString())
       .order('starts_at', { ascending: true })
-      .limit(limit)
+      .range(offset, offset + limit - 1)
     return (data ?? []) as EventWithDetails[]
   } catch {
     return []
   }
 }
-export async function getDiscoverEvents(limit = 24) {
+export async function getDiscoverEvents(limit = 24, offset = 0) {
   try {
     const supabase = await createClient()
     const { data } = await supabase
@@ -304,7 +304,7 @@ export async function getDiscoverEvents(limit = 24) {
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
       .order('starts_at', { ascending: true })
-      .limit(limit)
+      .range(offset, offset + limit - 1)
     return (data ?? []) as EventWithDetails[]
   } catch {
     return []
