@@ -295,3 +295,18 @@ export async function getFreeEvents(limit = 10) {
     return []
   }
 }
+export async function getDiscoverEvents(limit = 24) {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('events_with_details')
+      .select('*')
+      .eq('status', 'published')
+      .gt('starts_at', new Date().toISOString())
+      .order('starts_at', { ascending: true })
+      .limit(limit)
+    return (data ?? []) as EventWithDetails[]
+  } catch {
+    return []
+  }
+}
