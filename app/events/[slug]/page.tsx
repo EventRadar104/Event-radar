@@ -56,6 +56,7 @@ export default async function EventDetailPage({ params }: PageProps) {
     getEventBySlug(slug),
     getRsvpCount(slug),
     getUserEventState(slug),
+    isDiscover ? getDiscoverEvents(24, (discoverPage - 1) * 24) : Promise.resolve([] as EventWithDetails[])
   ])
   if (!event) notFound()
 
@@ -233,3 +234,5 @@ function MetaCard({ icon, label, value, sub, link }: {
     </div>
   )
 }
+isDiscover = params.sort === 'discover'
+discoverPage = parseInt(params.page ?? '1', 10)
