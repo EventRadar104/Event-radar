@@ -11,7 +11,7 @@ import ViewTracker from './ViewTracker'
 interface PageProps {
   params: Promise<{ slug: string }>
 }
-
+h
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const event = await getEventBySlug(slug)
@@ -146,12 +146,12 @@ export default async function EventDetailPage({ params }: PageProps) {
           <div>
             <div style={{ fontSize:28, fontFamily:'var(--font-serif)', color: price.free ? 'var(--green)' : 'var(--ink)' }}>{price.text}</div>
             <div style={{ fontSize:13, color:'var(--ink3)', marginTop:2 }}>
-              {event.is_free ? 'No tickets needed — just show up' : 'Tickets via external provider'}
+              {event.is_free ? (event.ticket_url ? 'Free — see event page for details' : 'No tickets needed — just show up') : 'Tickets via external provider'}
             </div>
           </div>
-          {!event.is_free && event.ticket_url && (
+          {event.ticket_url && (
             <a href={event.ticket_url} target="_blank" rel="noopener noreferrer" style={{ background:'var(--green)', color:'#fff', border:'none', borderRadius:12, padding:'14px 28px', fontSize:16, fontWeight:500, textDecoration:'none', flexShrink:0 }}>
-              Get tickets →
+              {event.is_free ? 'Se arrangement →' : 'Get tickets →'}
             </a>
           )}
         </div>
