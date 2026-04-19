@@ -272,7 +272,7 @@ export async function getWeekendEvents(limit = 10) {
       .gte('starts_at', sat.toISOString())
       .lte('starts_at', sun.toISOString())
       .order('starts_at', { ascending: true })
-      .range(offset, offset + limit - 1)
+      .limit(limit)
     return (data ?? []) as EventWithDetails[]
   } catch {
     return []
@@ -289,7 +289,7 @@ export async function getFreeEvents(limit = 10) {
       .eq('is_free', true)
       .gt('starts_at', new Date().toISOString())
       .order('starts_at', { ascending: true })
-      .range(offset, offset + limit - 1)
+      .limit(limit)
     return (data ?? []) as EventWithDetails[]
   } catch {
     return []
