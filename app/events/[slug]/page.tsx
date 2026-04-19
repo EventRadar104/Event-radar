@@ -11,7 +11,7 @@ import ViewTracker from './ViewTracker'
 interface PageProps {
   params: Promise<{ slug: string }>
 }
-h
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const event = await getEventBySlug(slug)
@@ -56,7 +56,6 @@ export default async function EventDetailPage({ params }: PageProps) {
     getEventBySlug(slug),
     getRsvpCount(slug),
     getUserEventState(slug),
-    isDiscover ? getDiscoverEvents(24, (discoverPage - 1) * 24) : Promise.resolve([] as EventWithDetails[])
   ])
   if (!event) notFound()
 
@@ -179,7 +178,7 @@ export default async function EventDetailPage({ params }: PageProps) {
 
         {event.tags && event.tags.length > 0 && (
           <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:28 }}>
-            {event.tags.map(tag => (
+            {event.tags.map((tag: string) => (
               <Link key={tag} href={`/?q=${encodeURIComponent(tag)}`} style={{ background:'var(--stone)', border:'1px solid var(--border)', borderRadius:20, padding:'4px 12px', fontSize:12, color:'var(--ink2)', textDecoration:'none' }}>
                 #{tag}
               </Link>
@@ -234,5 +233,3 @@ function MetaCard({ icon, label, value, sub, link }: {
     </div>
   )
 }
-isDiscover = params.sort === 'discover'
-discoverPage = parseInt(params.page ?? '1', 10)
