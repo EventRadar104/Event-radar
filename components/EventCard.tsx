@@ -1,5 +1,5 @@
-'use client'
-import Link from 'next/link'
+'use client
+  'import Link from 'next/link'f{price.text}
 import Image from 'next/image'
 import type { EventWithDetails } from '@/lib/types'
 
@@ -112,8 +112,7 @@ export function EventCard({ event, size = 'grid' }: EventCardProps) {
           </div>
         </div>
         <div style={{ padding:'0 12px 10px' }}>
-          <span style={{ fontSize:12, fontWeight:600, color: price.free ? 'var(--green)' : 'var(--ink)' }}>{price.text}</span>
-        </div>
+        <span className={`cprice ${price.free ? 'free' : ''}`} style={{ fontSize:12, fontWeight:600 }}>{price.text}</span>span>        </div>
       </Link>
     )
   }
@@ -133,16 +132,14 @@ export function EventCard({ event, size = 'grid' }: EventCardProps) {
           )}
           {catBadge}
         </div>
-        <div style={{ padding:'14px 14px 10px', borderTop: `3px solid ${accent}` }}>
-          <h4 style={{ fontSize:14, fontWeight:500, marginBottom:6, lineHeight:1.35 }}>{event.title}</h4>
+        <span className={`cprice ${price.free ? 'free' : ''}`} style={{ fontSize:13, fontWeight:600 }}>{price.text}</span>span>          <h4 style={{ fontSize:14, fontWeight:500, marginBottom:6, lineHeight:1.35 }}>{event.title}</h4>
           <div style={{ fontSize:12, color:'var(--ink3)', display:'flex', flexDirection:'column', gap:2 }}>
             <span>{formatDate(event.starts_at)}</span>
             <span>{event.venue_name ?? event.venue_city ?? ''}</span>
           </div>
         </div>
         <div style={{ padding:'0 14px 12px' }}>
-          <span style={{ fontSize:13, fontWeight:600, color: price.free ? 'var(--green)' : 'var(--ink)' }}>{price.text}</span>
-        </div>
+        <span className={`cprice ${price.free ? 'free' : ''}`} style={{ fontSize:13, fontWeight:600 }}>{price.text}</span>span>        </div>
       </Link>
     </div>
   )
