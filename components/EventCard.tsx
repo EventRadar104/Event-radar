@@ -46,10 +46,10 @@ function categoryToAccent(slugs: string[] | null): string {
 
 function formatPrice(event: EventWithDetails): { text: string; free: boolean } {
   if (event.is_free) return { text: 'Free', free: true }
-  if (event.price_from && event.price_to) return { text: `${event.price_from}–${event.price_to} kr`, free: false }
+  if (event.price_from && event.price_to) return { text: `${event.price_from}-${event.price_to} kr`, free: false }
   if (event.price_from) return { text: `from ${event.price_from} kr`, free: false }
-  if (event.ticket_url) return { text: 'Check tickets →', free: false }
-  return { text: 'See organiser for price', free: false }
+  return { text: 'Check tickets', free: false }
+}
 }
 
 function formatDate(iso: string): string {
