@@ -1,0 +1,96 @@
+/* EventCard Component Styles */
+
+.event-card {
+    display: block;
+    position: relative;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bg);
+    border-top: 3px solid transparent;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+}
+
+.event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Image container */
+.phtogr {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--ink4);
+}
+
+.phtogr img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 20%;
+}
+
+/* Content padding */
+.event-card > div:last-child {
+    padding: 0 12px 10px;
+}
+
+/* Price styling */
+.cprice {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    color: var(--white);
+    display: inline-block;
+}
+
+.cprice.free {
+    color: var(--green);
+}
+
+/* Title */
+.event-card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 8px 0 4px;
+    line-height: 1.3;
+    color: var(--ink);
+}
+
+/* Venue and date */
+.event-card p {
+    font-size: 13px;
+    color: var(--ink3);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Category badge in image */
+.phtogr > div {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 1;
+}
+
+/* Grid layout responsive */
+@media (min-width: 640px) {
+    .event-card {
+          border-radius: 16px;
+    }
+
+  .event-card h3 {
+        font-size: 18px;
+  }
+
+  .event-card p {
+        font-size: 14px;
+  }
+}
