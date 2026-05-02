@@ -70,7 +70,7 @@ export function EventCard({ event, size = 'grid', weekend }: EventCardProps) {
   const categoryIcon = categoryToIcon(event.category_slugs)
   const accentColor = categoryToAccent(event.category_slugs)
   const price = formatPrice(event)
-  const formattedDate = formatDate(event.start_date)
+  const formattedDate = formatDate(event.start_at)
   
   return (
     <Link href={`/event/${event.id}`} className="event-card" style={{ borderTopColor: accentColor }}>
