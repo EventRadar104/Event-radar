@@ -47,7 +47,7 @@ function formatDate(iso: string): string {
 
 export interface EventCardProps {
   event: EventWithDetails
-  size?: 'grid' | 'single'
+  size?: 'grid' | 'single' | 'small'
   weekend?: boolean
 }
 
