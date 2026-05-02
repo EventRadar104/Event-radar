@@ -17,17 +17,17 @@ function categoryToPhClass(slugs: string[] | null): string {
 }
 
 function categoryToIcon(slugs: string[] | null): string {
-  if (!slugs || slugs.length === 0) return '📍'
+  if (!slugs || slugs.length === 0) return 'PIN'
   const slug = slugs[0]
-  if (slug.includes('music') || slug.includes('concert')) return '🎵'
-  if (slug.includes('sport')) return '⚽'
-  if (slug.includes('food') || slug.includes('nightlife')) return '🍜'
-  if (slug.includes('art')) return '🎨'
-  if (slug.includes('outdoor')) return '🏕️'
-  if (slug.includes('culture')) return '🌿'
-  if (slug.includes('comedy')) return '😂'
-  if (slug.includes('tech')) return '💻'
-  return '📍'
+  if (slug.includes('music') || slug.includes('concert')) return 'MUSIC'
+  if (slug.includes('sport')) return 'SPORT'
+  if (slug.includes('food') || slug.includes('nightlife')) return 'FOOD'
+  if (slug.includes('art')) return 'ART'
+  if (slug.includes('outdoor')) return 'OUTDOOR'
+  if (slug.includes('culture')) return 'CULTURE'
+  if (slug.includes('comedy')) return 'COMEDY'
+  if (slug.includes('tech')) return 'TECH'
+  return 'PIN'
 }
 
 function categoryToAccent(slugs: string[] | null): string {
@@ -66,9 +66,9 @@ export interface EventCardProps {
 }
 
 export function EventCard({ event, size = 'grid', weekend }: EventCardProps) {
-  const categoryPh = categoryToPhClass(event.categories)
-  const categoryIcon = categoryToIcon(event.categories)
-  const accentColor = categoryToAccent(event.categories)
+  const categoryPh = categoryToPhClass(event.category_slugs)
+  const categoryIcon = categoryToIcon(event.category_slugs)
+  const accentColor = categoryToAccent(event.category_slugs)
   const price = formatPrice(event)
   const formattedDate = formatDate(event.start_date)
   
