@@ -4,17 +4,6 @@ import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 import { createClient } from '@/lib/supabase/client'
 import type { EventWithDetails } from '@/lib/types'
 
-const CATEGORIES = [
-  { slug: 'music',   label: 'Music' },
-  { slug: 'sports',  label: 'Sports' },
-  { slug: 'food',    label: 'Food & Drink' },
-  { slug: 'arts',    label: 'Arts' },
-  { slug: 'outdoor', label: 'Outdoor' },
-  { slug: 'culture', label: 'Culture' },
-  { slug: 'comedy',  label: 'Comedy' },
-  { slug: 'tech',    label: 'Technology' },
-]
-
 type DateMode = 'single' | 'range' | 'weekend'
 
 function getWeekendDates(): { sat: Date; sun: Date } {
@@ -74,6 +63,7 @@ export default function TripPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState('')
+  const [categories, setCategories] = useState<{ name: string; slug: string }[]>([])
 
   const [city, setCity] = useState('')
   const [fromDate, setFromDate] = useState('')
@@ -86,7 +76,7 @@ export default function TripPage() {
     setTimeout(() => setToast(''), 2000)
   }
 
-  // Load initial events and shared trip from URL
+  // Load initial events, categories, and shared trip from URL
   useEffect(() => {
     const supabase = createClient()
     async function init() {
@@ -106,15 +96,17 @@ export default function TripPage() {
           ? supabase.from('events_with_details').select('*').in('id', sharedIds).eq('status', 'published')
           : null
 
-      const [discoverResult, sharedResult] = await Promise.all([
+      const [discoverResult, sharedResult, catResult] = await Promise.all([
         discoverQuery,
         sharedQuery ?? Promise.resolve({ data: null }),
+        supabase.from('categories').select('name, slug').order('name'),
       ])
 
       setEvents((discoverResult.data ?? []) as EventWithDetails[])
       if (sharedResult.data && sharedResult.data.length > 0) {
         setTripEvents(sharedResult.data as EventWithDetails[])
       }
+      setCategories((catResult.data ?? []) as { name: string; slug: string }[])
       setLoading(false)
     }
     init()
@@ -225,7 +217,7 @@ export default function TripPage() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { showToast('Log in to save events'); return }
-    await supabase.from('favorites').upsert({ user_id: user.id, event_id: event.id })
+    await supabase.from('favorites').insert({ user_id: user.id, event_id: event.id })
     showToast('Event saved!')
   }
 
@@ -295,7 +287,7 @@ export default function TripPage() {
             style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}
           >
             <option value="">All events</option>
-            {CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.label}</option>)}
+            {categories.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
           </select>
         </div>
         <button
@@ -340,17 +332,22 @@ export default function TripPage() {
             <div
               key={event.id}
               onClick={() => setSelectedEvent(event)}
-              style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, cursor: 'pointer', flexShrink: 0 }}
+              style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', flexShrink: 0, overflow: 'hidden' }}
             >
-              <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
-                {event.category_names?.[0] ?? ''}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, lineHeight: 1.3 }}>{event.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                {fmtDate(event)}{event.venue_city ? ` · ${event.venue_city}` : ''}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 3, fontWeight: 500 }}>
-                {priceText(event)}
+              {event.cover_image_url && (
+                <img src={event.cover_image_url} alt={event.title} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: '8px 8px 0 0', display: 'block' }} />
+              )}
+              <div style={{ padding: 14 }}>
+                <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
+                  {event.category_names?.[0] ?? ''}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, lineHeight: 1.3 }}>{event.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                  {fmtDate(event)}{event.venue_city ? ` · ${event.venue_city}` : ''}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 3, fontWeight: 500 }}>
+                  {priceText(event)}
+                </div>
               </div>
             </div>
           ))}
@@ -401,10 +398,16 @@ export default function TripPage() {
           <div style={{ background: 'var(--white)', borderRadius: 20, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 28, position: 'relative' }}>
             <button
               onClick={() => setSelectedEvent(null)}
-              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: '1px solid var(--border)', borderRadius: '50%', width: 32, height: 32, fontSize: 18, cursor: 'pointer', color: 'var(--ink3)', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: '1px solid var(--border)', borderRadius: '50%', width: 32, height: 32, fontSize: 18, cursor: 'pointer', color: 'var(--ink3)', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, zIndex: 1 }}
             >
               ×
             </button>
+
+            {selectedEvent.cover_image_url ? (
+              <img src={selectedEvent.cover_image_url} alt={selectedEvent.title} style={{ width: 'calc(100% + 56px)', height: 200, objectFit: 'cover', borderRadius: '20px 20px 0 0', display: 'block', margin: '-28px -28px 20px -28px' }} />
+            ) : (
+              <div style={{ width: 'calc(100% + 56px)', height: 120, background: 'var(--stone)', borderRadius: '20px 20px 0 0', margin: '-28px -28px 20px -28px' }} />
+            )}
 
             <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
               {selectedEvent.category_names?.[0] ?? ''}

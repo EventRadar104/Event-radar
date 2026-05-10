@@ -298,6 +298,19 @@ export async function getFreeEvents(limit = 10) {
     return []
   }
 }
+export async function getCategories() {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('categories')
+      .select('name, slug')
+      .order('name')
+    return (data ?? []) as { name: string; slug: string }[]
+  } catch {
+    return []
+  }
+}
+
 export async function getEventsByIds(ids: string[]): Promise<EventWithDetails[]> {
   try {
     const supabase = await createClient()

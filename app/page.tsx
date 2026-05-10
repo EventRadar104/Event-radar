@@ -8,6 +8,7 @@ import {
   getWeekendEvents,
   getFreeEvents,
   getDiscoverEvents,
+  getCategories,
 } from '@/lib/queries'
 import { EventCard } from '@/components/EventCard'
 import { EventRow } from '@/components/EventRow'
@@ -17,13 +18,6 @@ import { DiscoverSection } from '@/components/DiscoverSection'
 import type { SearchParams, EventWithDetails } from '@/lib/types'
 
 const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Tromsø', 'Stavanger', 'Kristiansand']
-const CATEGORIES = [
-  { label: 'Music', slug: 'concerts-music' },
-  { label: 'Sports', slug: 'sports' },
-  { label: 'Food & Drink', slug: 'food-nightlife' },
-  { label: 'Outdoor', slug: 'outdoors' },
-  { label: 'Comedy', slug: 'comedy' },
-]
 
 function buildHref(params: SearchParams, overrides: Partial<SearchParams>): string {
   const p = { ...params, ...overrides }
@@ -62,6 +56,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     weekendEvents,
     freeEvents,
     discoverEvents,
+    categories,
   ] = await Promise.all([
     getPublishedEventCount(),
     hasTraditionalFilters ? searchEvents(params) : Promise.resolve([] as EventWithDetails[]),
@@ -72,6 +67,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     isHomePage ? getWeekendEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getFreeEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getDiscoverEvents(50) : Promise.resolve([] as EventWithDetails[]),
+    getCategories(),
   ])
 
   // Steg 1: Dedup — same event should not appear in multiple home page sections
@@ -110,7 +106,7 @@ export default async function HomePage({ searchParams }: PageProps) {
             <label htmlFor="cat-select" style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>Category</label>
             <select id="cat-select" name="cat" defaultValue={activeCat} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
               <option value="">All events</option>
-              {CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.label}</option>)}
+              {categories.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}
             </select>
           </div>
           <button type="submit" style={{ background: 'var(--green)', color: '#fff', border: 'none', padding: '0 26px', fontSize: 14, fontWeight: 500, flexShrink: 0, cursor: 'pointer' }}>Search</button>
