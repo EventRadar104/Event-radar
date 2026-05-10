@@ -33,7 +33,7 @@ export async function Nav() {
 
       {/* Right side */}
       <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
-        <Link href="/trips" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap' }}>
+        <Link href="/trip" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap' }}>
           Plan a trip
         </Link>
         {user && (
