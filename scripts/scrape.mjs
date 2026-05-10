@@ -134,7 +134,7 @@ async function main() {
             cover_image_url: image?.url ?? null,
             starts_at: ev.dates?.start?.dateTime ?? `${ev.dates?.start?.localDate}T20:00:00Z`,
             venue_id: venueId,
-            is_free: !!(price && price.min === 0 && price.max === 0),
+            is_free: ev.url && !price ? false : !!(price && price.min === 0 && price.max === 0),
             price_from: price?.min ?? null,
             price_to: price?.max ?? null,
             ticket_url: ev.url ?? null,
