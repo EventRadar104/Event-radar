@@ -5,13 +5,14 @@ import type { EventWithDetails } from '@/lib/types'
 
 interface Props {
   initialEvents: EventWithDetails[]
+  initialHasMore?: boolean
 }
 
-export function DiscoverSection({ initialEvents }: Props) {
+export function DiscoverSection({ initialEvents, initialHasMore = true }: Props) {
   const [events, setEvents] = useState(initialEvents)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [hasMore, setHasMore] = useState(initialEvents.length === 50)
+  const [hasMore, setHasMore] = useState(initialEvents.length === 0 ? false : initialHasMore)
 
   async function loadMore() {
     setLoading(true)
