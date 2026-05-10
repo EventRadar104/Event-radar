@@ -298,7 +298,7 @@ export async function getFreeEvents(limit = 10) {
     return []
   }
 }
-export async function getDiscoverEvents(limit = 24, offset = 0) {
+export async function getDiscoverEvents(limit = 50, offset = 0) {
   try {
     const supabase = await createClient()
     const { data } = await supabase
