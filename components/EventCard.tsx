@@ -80,7 +80,7 @@ export function EventCard({ event }: EventCardProps) {
           ) : (
             <>
               <span className="badge-price">{formatPrice(event)}</span>
-              {event.ticket_url && (
+              {event.ticket_url ? (
                 <a
                   href={event.ticket_url}
                   target="_blank"
@@ -90,6 +90,15 @@ export function EventCard({ event }: EventCardProps) {
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>
                   Billetter
+                </a>
+              ) : (
+                <a
+                  href={`/events/${event.slug ?? event.id}`}
+                  className="btn-external"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Se arrangement
                 </a>
               )}
             </>
