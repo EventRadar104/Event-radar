@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '20'
       - name: Install dependencies
-        run: npm install @supabase/supabase-js
+        run: npm install @supabase/supabase-js ws
       - name: Run scraper
         run: node scripts/scrape.mjs
         env:
