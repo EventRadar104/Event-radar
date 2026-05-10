@@ -59,7 +59,7 @@ export function EventCard({ event, size = 'grid', weekend }: EventCardProps) {
   const formattedDate = formatDate(event.starts_at)
   
   return (
-    <Link href={`/event/${event.id}`} className="event-card" style={{ borderTopColor: accentColor }}>
+    <Link href={`/events/${event.slug ?? event.id}`} className="event-card" style={{ borderTopColor: accentColor }}>
       <div className={`phtogr ${categoryPh}`}>
         {event.cover_image_url && (
           <Image

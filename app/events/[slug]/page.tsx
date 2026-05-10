@@ -52,14 +52,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function EventDetailPage({ params }: PageProps) {
   const { slug } = await params
-  const [event, , userState] = await Promise.all([
+  const [event, userState] = await Promise.all([
     getEventBySlug(slug),
-    getRsvpCount(slug),
     getUserEventState(slug),
   ])
   if (!event) notFound()
 
-  const [realCount] = await Promise.all([getRsvpCount(event.id)])
+  const realCount = await getRsvpCount(event.id)
 
   const price = event.is_free
     ? { text: 'Free', free: true }
