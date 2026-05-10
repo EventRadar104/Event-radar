@@ -298,6 +298,20 @@ export async function getFreeEvents(limit = 10) {
     return []
   }
 }
+export async function getEventsByIds(ids: string[]): Promise<EventWithDetails[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('events_with_details')
+      .select('*')
+      .in('id', ids)
+      .eq('status', 'published')
+    return (data ?? []) as EventWithDetails[]
+  } catch {
+    return []
+  }
+}
+
 export async function getDiscoverEvents(limit = 50, offset = 0) {
   try {
     const supabase = await createClient()
