@@ -14,15 +14,16 @@ import type {
 export async function searchEvents(params: SearchParams = {}) {
   try {
     const supabase = await createClient()
+    const page = parseInt(params.page || '1', 10)
     const { data, error } = await supabase.rpc('search_events', {
-      query_text:   params.q    || null,
-      filter_city:  params.city || null,
-      filter_slug:  params.cat  || null,
-      from_date: params.from || new Date().toISOString(),
-      to_date:      params.to   || null,
-      only_free:    params.free === 'true',
-      result_limit: 48,
-      result_offset: (parseInt(params.page || '1', 10) - 1) * 24,
+      query_text:    params.q    || null,
+      filter_city:   params.city || null,
+      filter_slug:   params.cat  || null,
+      from_date:     params.from || new Date().toISOString(),
+      to_date:       params.to   || null,
+      only_free:     params.free === 'true',
+      result_limit:  50,
+      result_offset: (page - 1) * 50,
     })
     if (error) {
       console.error('searchEvents error:', error.message)
@@ -237,23 +238,24 @@ export async function getFeaturedEvent() {
   }
 }
 
-export async function getHotEvents(limit = 10) {
+export async function getHotEvents(limit = 10, page = 1) {
   try {
     const supabase = await createClient()
+    const offset = (page - 1) * limit
     const { data } = await supabase
       .from('events_with_details')
       .select('*')
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
-      .order('price_from', { ascending: false, nullsFirst: false })
-      .limit(limit)
+      .order('starts_at', { ascending: true })
+      .range(offset, offset + limit - 1)
     return (data ?? []) as EventWithDetails[]
   } catch {
     return []
   }
 }
 
-export async function getWeekendEvents(limit = 10) {
+export async function getWeekendEvents(limit = 10, page = 1) {
   const now = new Date()
   const day = now.getDay()
   const daysToSat = day === 6 ? 0 : 6 - day
@@ -265,6 +267,7 @@ export async function getWeekendEvents(limit = 10) {
   sun.setHours(23, 59, 59, 999)
   try {
     const supabase = await createClient()
+    const offset = (page - 1) * limit
     const { data } = await supabase
       .from('events_with_details')
       .select('*')
@@ -272,7 +275,7 @@ export async function getWeekendEvents(limit = 10) {
       .gte('starts_at', sat.toISOString())
       .lte('starts_at', sun.toISOString())
       .order('starts_at', { ascending: true })
-      .limit(limit)
+      .range(offset, offset + limit - 1)
     return (data ?? []) as EventWithDetails[]
   } catch {
     return []
