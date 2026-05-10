@@ -13,6 +13,7 @@ import { EventCard } from '@/components/EventCard'
 import { EventRow } from '@/components/EventRow'
 import { HeroEvent } from '@/components/HeroEvent'
 import { Pagination } from '@/components/Pagination'
+import { DiscoverSection } from '@/components/DiscoverSection'
 import type { SearchParams, EventWithDetails } from '@/lib/types'
 
 const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Tromsø', 'Stavanger', 'Kristiansand']
@@ -70,7 +71,7 @@ export default async function HomePage({ searchParams }: PageProps) {
     isHomePage ? getHotEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getWeekendEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getFreeEvents(12) : Promise.resolve([] as EventWithDetails[]),
-    isHomePage ? getDiscoverEvents(24) : Promise.resolve([] as EventWithDetails[]),
+    isHomePage ? getDiscoverEvents(50) : Promise.resolve([] as EventWithDetails[]),
   ])
 
   // Steg 1: Dedup — same event should not appear in multiple home page sections
@@ -200,12 +201,7 @@ export default async function HomePage({ searchParams }: PageProps) {
             {weekendEvents.length > 0 && <EventRow title="This weekend" events={weekendEvents} seeAllHref="/?weekend=true" />}
             <EventRow title="Free events" events={freeEvents} seeAllHref="/?free=true" />
             {dedupedDiscover.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <h2 style={{ fontSize: 20, fontFamily: "'Instrument Serif', serif", fontWeight: 400, marginBottom: 14 }}>Discover</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  {dedupedDiscover.map(event => <EventCard key={event.id} event={event} />)}
-                </div>
-              </div>
+              <DiscoverSection initialEvents={dedupedDiscover} />
             )}
           </>
         )}
