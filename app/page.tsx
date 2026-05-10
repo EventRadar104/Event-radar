@@ -116,11 +116,7 @@ export default async function HomePage({ searchParams }: PageProps) {
           <button type="submit" style={{ background: 'var(--green)', color: '#fff', border: 'none', padding: '0 26px', fontSize: 14, fontWeight: 500, flexShrink: 0, cursor: 'pointer' }}>Search</button>
         </form>
       </section>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '16px 24px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-        <Link href={buildHref(params, { free: 'true' })} style={{ padding: '9px 22px', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none', border: '1px solid var(--border)', background: onlyFree ? '#111' : '#fff', color: onlyFree ? '#fff' : 'var(--ink2)' }}>Free events</Link>
-        <Link href="/?weekend=true" style={{ padding: '9px 22px', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none', border: '1px solid var(--border)', background: isWeekend ? '#111' : '#fff', color: isWeekend ? '#fff' : 'var(--ink2)' }}>This weekend</Link>
-      </div>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 80px' }}>
+<div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 80px' }}>
         {hasTraditionalFilters ? (
           <>
             <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
