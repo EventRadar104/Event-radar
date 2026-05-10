@@ -12,6 +12,7 @@ import {
 import { EventCard } from '@/components/EventCard'
 import { EventRow } from '@/components/EventRow'
 import { HeroEvent } from '@/components/HeroEvent'
+import { Pagination } from '@/components/Pagination'
 import type { SearchParams, EventWithDetails } from '@/lib/types'
 
 const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Tromsø', 'Stavanger', 'Kristiansand']
@@ -46,6 +47,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const onlyFree = params.free === 'true'
   const isSortHot = params.sort === 'hot'
   const isWeekend = params.weekend === 'true'
+  const page = parseInt(params.page ?? '1', 10)
   const hasTraditionalFilters = !!(activeCity || activeCat || params.q || onlyFree || params.from)
   const isHomePage = !hasTraditionalFilters && !isSortHot && !isWeekend
 
@@ -62,14 +64,22 @@ export default async function HomePage({ searchParams }: PageProps) {
   ] = await Promise.all([
     getPublishedEventCount(),
     hasTraditionalFilters ? searchEvents(params) : Promise.resolve([] as EventWithDetails[]),
-    isSortHot ? getHotEvents(48) : Promise.resolve([] as EventWithDetails[]),
-    isWeekend ? getWeekendEvents(48) : Promise.resolve([] as EventWithDetails[]),
+    isSortHot ? getHotEvents(50, page) : Promise.resolve([] as EventWithDetails[]),
+    isWeekend ? getWeekendEvents(50, page) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getFeaturedEvent() : Promise.resolve(null as EventWithDetails | null),
     isHomePage ? getHotEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getWeekendEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getFreeEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getDiscoverEvents(24) : Promise.resolve([] as EventWithDetails[]),
   ])
+
+  // Steg 1: Dedup — same event should not appear in multiple home page sections
+  const featuredId = featured?.id
+  const hotIds = new Set(hotEvents.map(e => e.id))
+  const weekendIds = new Set(weekendEvents.map(e => e.id))
+  const freeIds = new Set(freeEvents.map(e => e.id))
+  const usedIds = new Set([featuredId, ...hotIds, ...weekendIds, ...freeIds].filter(Boolean) as string[])
+  const dedupedDiscover = discoverEvents.filter(e => !usedIds.has(e.id))
 
   return (
     <>
@@ -128,9 +138,16 @@ export default async function HomePage({ searchParams }: PageProps) {
                   <div style={{ fontSize: 14 }}>Try adjusting your search or <Link href="/" style={{ color: 'var(--green)' }}>browse all events</Link>.</div>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  {searchResults.map(event => <EventCard key={event.id} event={event} />)}
-                </div>
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    {searchResults.map(event => <EventCard key={event.id} event={event} />)}
+                  </div>
+                  <Pagination
+                    currentPage={page}
+                    hasMore={searchResults.length === 50}
+                    baseHref={buildHref(params, {})}
+                  />
+                </>
               )}
             </Suspense>
           </>
@@ -143,9 +160,16 @@ export default async function HomePage({ searchParams }: PageProps) {
             {hotAllEvents.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--ink3)' }}>No events found.</div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                {hotAllEvents.map(event => <EventCard key={event.id} event={event} />)}
-              </div>
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  {hotAllEvents.map(event => <EventCard key={event.id} event={event} />)}
+                </div>
+                <Pagination
+                  currentPage={page}
+                  hasMore={hotAllEvents.length === 50}
+                  baseHref="/?sort=hot"
+                />
+              </>
             )}
           </>
         ) : isWeekend ? (
@@ -157,9 +181,16 @@ export default async function HomePage({ searchParams }: PageProps) {
             {weekendAllEvents.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--ink3)' }}>No events this weekend.</div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                {weekendAllEvents.map(event => <EventCard key={event.id} event={event} />)}
-              </div>
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  {weekendAllEvents.map(event => <EventCard key={event.id} event={event} />)}
+                </div>
+                <Pagination
+                  currentPage={page}
+                  hasMore={weekendAllEvents.length === 50}
+                  baseHref="/?weekend=true"
+                />
+              </>
             )}
           </>
         ) : (
@@ -168,11 +199,11 @@ export default async function HomePage({ searchParams }: PageProps) {
             <EventRow title="Hot right now 🔥" events={hotEvents} seeAllHref="/?sort=hot" />
             {weekendEvents.length > 0 && <EventRow title="This weekend" events={weekendEvents} seeAllHref="/?weekend=true" />}
             <EventRow title="Free events" events={freeEvents} seeAllHref="/?free=true" />
-            {discoverEvents.length > 0 && (
+            {dedupedDiscover.length > 0 && (
               <div style={{ marginTop: 8 }}>
                 <h2 style={{ fontSize: 20, fontFamily: "'Instrument Serif', serif", fontWeight: 400, marginBottom: 14 }}>Discover</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  {discoverEvents.map(event => <EventCard key={event.id} event={event} />)}
+                  {dedupedDiscover.map(event => <EventCard key={event.id} event={event} />)}
                 </div>
               </div>
             )}
