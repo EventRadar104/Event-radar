@@ -64,3 +64,14 @@ body {
   animation: livePulse 1.8s ease-in-out infinite;
   flex-shrink: 0;
 }
+
+/* Category placeholder backgrounds (used on event images when no cover photo) */
+.ph-music   { background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%); }
+.ph-sports  { background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); }
+.ph-food    { background: linear-gradient(135deg, #7c2d12 0%, #c2410c 100%); }
+.ph-arts    { background: linear-gradient(135deg, #78350f 0%, #b45309 100%); }
+.ph-outdoor { background: linear-gradient(135deg, #064e3b 0%, #0f766e 100%); }
+.ph-culture { background: linear-gradient(135deg, #500724 0%, #9d174d 100%); }
+.ph-comedy  { background: linear-gradient(135deg, #831843 0%, #be185d 100%); }
+.ph-tech    { background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%); }
+.ph-default { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); }
