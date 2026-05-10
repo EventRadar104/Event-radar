@@ -2,8 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { getEventBySlug, getRsvpCount, getUserEventState } from '@/lib/queries'
-import { RsvpButton } from '@/components/RsvpButton'
+import { getEventBySlug, getUserEventState } from '@/lib/queries'
 import { SaveButton } from '@/components/SaveButton'
 import { ShareButton } from '@/components/ShareButton'
 import ViewTracker from './ViewTracker'
@@ -57,8 +56,6 @@ export default async function EventDetailPage({ params }: PageProps) {
     getUserEventState(slug),
   ])
   if (!event) notFound()
-
-  const realCount = await getRsvpCount(event.id)
 
   const price = event.is_free
     ? { text: 'Free', free: true }
@@ -126,20 +123,6 @@ export default async function EventDetailPage({ params }: PageProps) {
           {event.category_names?.[0] ?? ''}
         </div>
         <h1 style={{ fontSize:'clamp(26px,4vw,40px)', marginBottom:16 }}>{event.title}</h1>
-
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24, flexWrap:'wrap' }}>
-          <div style={{ display:'flex' }}>
-            {['AS','MJ','KN','+'].map((init, i) => (
-              <div key={i} style={{ width:28, height:28, borderRadius:'50%', background:'var(--stone)', border:'2px solid var(--white)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:600, color:'var(--ink3)', marginLeft: i === 0 ? 0 : -8 }}>
-                {init}
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize:13, color:'var(--ink2)' }}>
-            <strong>{realCount.toLocaleString('nb-NO')}</strong> attending
-          </div>
-          <RsvpButton eventId={event.id} initialStatus={userState.rsvpStatus} initialCount={realCount} />
-        </div>
 
         <div style={{ background:'var(--white)', border:'1.5px solid var(--border)', borderRadius:16, padding:24, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, marginBottom:24 }}>
           <div>
