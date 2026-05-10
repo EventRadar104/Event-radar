@@ -201,7 +201,7 @@ export default async function HomePage({ searchParams }: PageProps) {
             {weekendEvents.length > 0 && <EventRow title="This weekend" events={weekendEvents} seeAllHref="/?weekend=true" />}
             <EventRow title="Free events" events={freeEvents} seeAllHref="/?free=true" />
             {dedupedDiscover.length > 0 && (
-              <DiscoverSection initialEvents={dedupedDiscover} />
+              <DiscoverSection initialEvents={dedupedDiscover} initialHasMore={discoverEvents.length === 50} />
             )}
           </>
         )}
