@@ -6,14 +6,12 @@ import type { EventWithDetails } from '@/lib/types'
 import { SaveButton } from '@/components/SaveButton'
 
 const CATEGORIES = [
-  { slug: 'music',   label: 'Music' },
-  { slug: 'sports',  label: 'Sports' },
-  { slug: 'food',    label: 'Food & Drink' },
-  { slug: 'arts',    label: 'Arts' },
-  { slug: 'outdoor', label: 'Outdoor' },
-  { slug: 'culture', label: 'Culture' },
-  { slug: 'comedy',  label: 'Comedy' },
-  { slug: 'tech',    label: 'Technology' },
+  { slug: 'concerts-music', label: 'Music' },
+  { slug: 'sports',         label: 'Sports' },
+  { slug: 'food-nightlife', label: 'Food & Drink' },
+  { slug: 'culture-arts',   label: 'Arts & Culture' },
+  { slug: 'outdoors',       label: 'Outdoor' },
+  { slug: 'comedy',         label: 'Comedy' },
 ]
 
 type DateMode = 'single' | 'range' | 'weekend'
