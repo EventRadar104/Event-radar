@@ -33,20 +33,20 @@ export async function Nav() {
 
       {/* Right side */}
       <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
-        <Link href="/trip" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap' }}>
+        <Link href="/trip" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', textDecoration:'none' }}>
           Plan a trip
         </Link>
         {user && (
-          <Link href="/saved" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:4 }}>
+          <Link href="/saved" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:4, textDecoration:'none' }}>
             <span>♡</span> Saved
           </Link>
         )}
-        <Link href="/events/new" style={{ background:'var(--ink)', color:'#fff', border:'none', borderRadius:40, padding:'8px 18px', fontSize:13, fontWeight:500, whiteSpace:'nowrap' }}>
+        <Link href="/events/new" style={{ background:'var(--ink)', color:'#fff', border:'none', borderRadius:40, padding:'8px 18px', fontSize:13, fontWeight:500, whiteSpace:'nowrap', textDecoration:'none' }}>
           + Post event
         </Link>
         {user ? (
-          <Link href="/dashboard" style={{ width:32, height:32, borderRadius:'50%', background:'var(--green-lt)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:600, color:'var(--green)' }}>
-            {user.email?.[0].toUpperCase() ?? 'U'}
+          <Link href="/dashboard" style={{ width:32, height:32, borderRadius:'50%', background:'var(--green-lt)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--green)', textDecoration:'none' }}>
+            <svg viewBox="0 0 16 16" fill="none" width={16} height={16}><circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </Link>
         ) : (
           <Link href="/sign-in" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8 }}>
