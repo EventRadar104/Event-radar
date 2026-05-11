@@ -6,12 +6,12 @@ import { createClient } from '@/lib/supabase/client'
 
 const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Stavanger', 'Tromsø', 'Kristiansand']
 const CATEGORIES = [
-  { label: '🎵 Music',   slug: 'concerts-music' },
-  { label: '⚽ Sports',  slug: 'sports' },
-  { label: '🍽 Food',    slug: 'food-nightlife' },
-  { label: '🎨 Arts',    slug: 'culture-arts' },
-  { label: '🌿 Outdoor', slug: 'outdoors' },
-  { label: '😂 Comedy',  slug: 'comedy' },
+  { label: 'Music',   slug: 'concerts-music' },
+  { label: 'Sports',  slug: 'sports' },
+  { label: 'Food',    slug: 'food-nightlife' },
+  { label: 'Arts',    slug: 'culture-arts' },
+  { label: 'Outdoor', slug: 'outdoors' },
+  { label: 'Comedy',  slug: 'comedy' },
 ]
 
 export function CreateGroupForm({ userId }: { userId: string | null }) {

@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 
 const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Stavanger', 'Tromsø', 'Kristiansand', 'Bodø', 'Drammen', 'Other']
 
-interface Category { id: string; name: string; slug: string; icon: string | null }
+interface Category { id: string; name: string; slug: string }
 
 interface Props {
   userId: string
@@ -208,7 +208,7 @@ export function CreateEventForm({ userId, categories }: Props) {
                 {categories.map(c => (
                   <button key={c.id} onClick={() => setCatId(catId === c.id ? '' : c.id)}
                     style={{ padding:10, borderRadius:10, border:`1.5px solid ${catId === c.id ? 'var(--green)' : 'var(--border)'}`, background: catId === c.id ? 'var(--green-lt)' : '#fff', color: catId === c.id ? 'var(--green)' : 'var(--ink2)', cursor:'pointer', display:'flex', alignItems:'center', gap:6, fontSize:13, transition:'all .15s' }}>
-                    {c.icon} {c.name.split('&')[0].trim()}
+                    {c.name.split('&')[0].trim()}
                   </button>
                 ))}
               </div>

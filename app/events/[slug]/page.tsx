@@ -102,13 +102,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             sizes="100vw"
           />
         ) : (
-          <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, textAlign:'center', padding:24 }}>
-            <div style={{ fontSize:72, opacity:.6 }}>
-              {event.category_slugs?.[0]?.includes('music') ? '🎵'
-                : event.category_slugs?.[0]?.includes('sport') ? '⚽'
-                : event.category_slugs?.[0]?.includes('food') ? '🍽️'
-                : '📅'}
-            </div>
+          <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textAlign:'center', padding:24 }}>
             <div style={{ fontSize:18, fontWeight:500, color:'rgba(255,255,255,.7)', maxWidth:500, lineHeight:1.3 }}>{event.title}</div>
           </div>
         )}
