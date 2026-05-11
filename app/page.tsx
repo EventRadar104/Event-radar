@@ -195,6 +195,7 @@ export default async function HomePage({ searchParams }: PageProps) {
             {featured && <HeroEvent event={featured} />}
             <EventRow title="Hot right now 🔥" events={hotEvents} seeAllHref="/?sort=hot" />
             {weekendEvents.length > 0 && <EventRow title="This weekend" events={weekendEvents} seeAllHref="/?weekend=true" />}
+            <TripBanner />
             <EventRow title="Free events" events={freeEvents} seeAllHref="/?free=true" />
             {dedupedDiscover.length > 0 && (
               <DiscoverSection initialEvents={dedupedDiscover} initialHasMore={discoverEvents.length === 50} />
@@ -203,6 +204,46 @@ export default async function HomePage({ searchParams }: PageProps) {
         )}
       </div>
     </>
+  )
+}
+
+function TripBanner() {
+  return (
+    <div style={{
+      background: '#2D6A4F',
+      borderRadius: 16,
+      padding: '32px 36px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 24,
+      margin: '8px 0',
+    }}>
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 8 }}>
+          Norway awaits
+        </div>
+        <h2 style={{ fontSize: 'clamp(20px,3vw,28px)', fontFamily: 'var(--font-serif)', fontWeight: 400, color: '#fff', margin: '0 0 10px' }}>
+          Plan a trip around events
+        </h2>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,.7)', margin: 0, maxWidth: 420, lineHeight: 1.55 }}>
+          Browse events across every city on an interactive map and build your own itinerary.
+        </p>
+      </div>
+      <Link href="/trip" style={{
+        flexShrink: 0,
+        background: '#fff',
+        color: '#2D6A4F',
+        borderRadius: 40,
+        padding: '11px 24px',
+        fontSize: 14,
+        fontWeight: 600,
+        textDecoration: 'none',
+        whiteSpace: 'nowrap',
+      }}>
+        Start planning
+      </Link>
+    </div>
   )
 }
 
