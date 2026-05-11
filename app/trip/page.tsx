@@ -67,6 +67,23 @@ function categoryIcon(e: EventWithDetails): string {
   return '📅'
 }
 
+function escSvg(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+function markerSvg(icon: string, title: string): string {
+  const label = escSvg(`${icon} ${title}`)
+  // rough width: ~8px per char + padding, capped at 200px
+  const pillW = Math.min(Math.max(label.length * 8 + 16, 80), 200)
+  const totalW = pillW + 22
+  return `<svg width="${totalW}" height="32" xmlns="http://www.w3.org/2000/svg">` +
+    `<circle cx="8" cy="16" r="7" fill="#EA4335"/>` +
+    `<circle cx="8" cy="16" r="3.5" fill="white"/>` +
+    `<rect x="18" y="2" width="${pillW}" height="28" rx="14" fill="white" stroke="#d0d0d0" stroke-width="1.5"/>` +
+    `<text x="30" y="21" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#222">${label}</text>` +
+    `</svg>`
+}
+
 function fmtDate(e: EventWithDetails): string {
   return new Date(e.starts_at).toLocaleDateString('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
@@ -170,10 +187,17 @@ export default function TripPage() {
     events
       .filter(e => e.venue_lat != null && e.venue_lng != null)
       .forEach(event => {
+        const icon = categoryIcon(event)
+        const shortTitle = event.title.length > 20 ? event.title.slice(0, 20) + '…' : event.title
+        const svg = markerSvg(icon, shortTitle)
         const marker = new g.maps.Marker({
           position: { lat: event.venue_lat, lng: event.venue_lng },
           map: mapRef.current,
-          title: `${categoryIcon(event)} ${event.title}`,
+          title: event.title,
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+            anchor: new g.maps.Point(8, 16),
+          },
         })
         marker.addListener('click', () => setSelectedEvent(event))
         markersRef.current.push(marker)
