@@ -32,6 +32,7 @@ export function CreateEventForm({ userId, categories }: Props) {
   const [priceTo, setPriceTo]   = useState('')
   const [ticketUrl, setTicketUrl] = useState('')
   const [isOnline, setIsOnline] = useState(false)
+  const [showAttending, setShowAttending] = useState(false)
   const [tags, setTags]         = useState('')
   const [imgFile, setImgFile]   = useState<File | null>(null)
   const [imgPreview, setImgPreview] = useState<string | null>(null)
@@ -119,6 +120,7 @@ export function CreateEventForm({ userId, categories }: Props) {
           price_from:      !isFree && priceFrom ? parseFloat(priceFrom) : null,
           price_to:        !isFree && priceTo   ? parseFloat(priceTo)   : null,
           ticket_url:      !isFree && ticketUrl ? ticketUrl.trim()       : null,
+          show_attending:  showAttending,
           status:          publish ? 'published' : 'draft',
           source:          'manual',
           tags:            tags.trim() ? tags.split(',').map(t => t.trim()).filter(Boolean) : null,
@@ -282,6 +284,34 @@ export function CreateEventForm({ userId, categories }: Props) {
               </Field>
             </>
           )}
+          <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, padding:'14px 0', borderTop:'1px solid var(--border)', marginTop:14, cursor:'pointer' }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:500, color:'var(--ink)', marginBottom:2 }}>Show attending button</div>
+              <div style={{ fontSize:12, color:'var(--ink3)', lineHeight:1.45 }}>Let visitors indicate they&apos;re attending. Useful for free events or community meetups.</div>
+            </div>
+            <div
+              onClick={() => setShowAttending(v => !v)}
+              style={{
+                flexShrink: 0,
+                width: 40, height: 22,
+                borderRadius: 11,
+                background: showAttending ? 'var(--green)' : 'var(--border)',
+                position: 'relative',
+                transition: 'background .2s',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                top: 3, left: showAttending ? 21 : 3,
+                width: 16, height: 16,
+                borderRadius: '50%',
+                background: '#fff',
+                boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                transition: 'left .2s',
+              }} />
+            </div>
+          </label>
         </Section>
       )}
 
