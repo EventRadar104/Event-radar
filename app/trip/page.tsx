@@ -54,6 +54,19 @@ function mapsUrl(e: EventWithDetails): string {
   )}`
 }
 
+function categoryIcon(e: EventWithDetails): string {
+  const s = e.category_slugs?.[0] ?? ''
+  if (s.includes('music') || s.includes('concert')) return '🎵'
+  if (s.includes('sport')) return '⚽'
+  if (s.includes('food') || s.includes('nightlife')) return '🍽️'
+  if (s.includes('art')) return '🎨'
+  if (s.includes('outdoor')) return '🌿'
+  if (s.includes('comedy')) return '😂'
+  if (s.includes('tech')) return '💻'
+  if (s.includes('culture')) return '🏛️'
+  return '📅'
+}
+
 function fmtDate(e: EventWithDetails): string {
   return new Date(e.starts_at).toLocaleDateString('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
@@ -127,7 +140,7 @@ export default function TripPage() {
     if (!key || !mapDivRef.current) return
 
     setOptions({ key, v: 'weekly' })
-    Promise.all([importLibrary('maps'), importLibrary('geocoding')]).then(() => {
+    Promise.all([importLibrary('maps'), importLibrary('geocoding'), importLibrary('marker')]).then(() => {
       if (!mapDivRef.current) return
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const g = (window as any).google
@@ -137,6 +150,7 @@ export default function TripPage() {
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
+        gestureHandling: 'greedy',
       })
       geocoderRef.current = new g.maps.Geocoder()
       setMapsLoaded(true)
@@ -150,18 +164,31 @@ export default function TripPage() {
     const g = (window as any).google
     if (!g) return
 
-    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current.forEach(m => { m.map = null })
     markersRef.current = []
+
+    const { AdvancedMarkerElement } = g.maps.marker
 
     events
       .filter(e => e.venue_lat != null && e.venue_lng != null)
       .forEach(event => {
-        const marker = new g.maps.Marker({
+        const pin = document.createElement('div')
+        pin.style.cssText = 'display:flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #d0d0d0;border-radius:20px;padding:4px 10px 4px 7px;box-shadow:0 2px 6px rgba(0,0,0,.18);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;max-width:180px'
+        const icon = document.createElement('span')
+        icon.textContent = categoryIcon(event)
+        const label = document.createElement('span')
+        label.textContent = event.title.length > 22 ? event.title.slice(0, 22) + '…' : event.title
+        label.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap'
+        pin.appendChild(icon)
+        pin.appendChild(label)
+
+        const marker = new AdvancedMarkerElement({
           position: { lat: event.venue_lat, lng: event.venue_lng },
           map: mapRef.current,
           title: event.title,
+          content: pin,
         })
-        marker.addListener('click', () => setSelectedEvent(event))
+        marker.addEventListener('click', () => setSelectedEvent(event))
         markersRef.current.push(marker)
       })
   }, [events, mapsLoaded])
@@ -333,17 +360,27 @@ export default function TripPage() {
             <div
               key={event.id}
               onClick={() => setSelectedEvent(event)}
-              style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, cursor: 'pointer', flexShrink: 0 }}
+              style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
             >
-              <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
-                {event.category_names?.[0] ?? ''}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, lineHeight: 1.3 }}>{event.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                {fmtDate(event)}{event.venue_city ? ` · ${event.venue_city}` : ''}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 3, fontWeight: 500 }}>
-                {priceText(event)}
+              {event.cover_image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={event.cover_image_url}
+                  alt={event.title}
+                  style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
+                />
+              )}
+              <div style={{ padding: 14 }}>
+                <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
+                  {event.category_names?.[0] ?? ''}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, lineHeight: 1.3 }}>{event.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                  {fmtDate(event)}{event.venue_city ? ` · ${event.venue_city}` : ''}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 3, fontWeight: 500 }}>
+                  {priceText(event)}
+                </div>
               </div>
             </div>
           ))}
