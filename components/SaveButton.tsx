@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 interface Props {
   eventId: string
   initialSaved?: boolean
-  variant?: 'card' | 'detail'
+  variant?: 'card' | 'detail' | 'inline'
 }
 
 const LS_KEY = 'saved_events'
@@ -39,6 +39,25 @@ export function SaveButton({ eventId, variant = 'card' }: Props) {
     }
     writeSaved(ids)
     setSaved(ids.has(eventId))
+  }
+
+  if (variant === 'inline') {
+    return (
+      <button
+        onClick={toggle}
+        aria-label={saved ? 'Remove from saved' : 'Save event'}
+        style={{
+          width: '100%', padding: '10px 0',
+          border: '1px solid var(--border)', borderRadius: 10,
+          fontSize: 13, fontWeight: 500,
+          background: saved ? 'var(--stone)' : 'var(--white)',
+          cursor: 'pointer',
+          color: saved ? '#c0392b' : 'var(--ink)',
+        }}
+      >
+        {saved ? '♥ Saved' : '♡ Save event'}
+      </button>
+    )
   }
 
   if (variant === 'detail') {
