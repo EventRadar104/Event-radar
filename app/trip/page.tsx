@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
-import { MarkerClusterer } from '@googlemaps/markerclusterer'
 import { createClient } from '@/lib/supabase/client'
 import type { EventWithDetails } from '@/lib/types'
 import { SaveButton } from '@/components/SaveButton'
@@ -55,6 +54,19 @@ function mapsUrl(e: EventWithDetails): string {
   )}`
 }
 
+function categoryColor(e: EventWithDetails): string {
+  const s = e.category_slugs?.[0] ?? ''
+  if (s.includes('music') || s.includes('concert')) return '#22c55e'
+  if (s.includes('sport')) return '#3b82f6'
+  if (s.includes('food') || s.includes('nightlife')) return '#f97316'
+  if (s.includes('art')) return '#a855f7'
+  if (s.includes('outdoor')) return '#84cc16'
+  if (s.includes('comedy')) return '#fbbf24'
+  if (s.includes('tech')) return '#06b6d4'
+  if (s.includes('culture')) return '#ec4899'
+  return '#6b7280'
+}
+
 function fmtDate(e: EventWithDetails): string {
   return new Date(e.starts_at).toLocaleDateString('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
@@ -66,10 +78,11 @@ export default function TripPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markersRef = useRef<any[]>([])
+  const overlaysRef = useRef<any[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const geocoderRef = useRef<any>(null)
-  const clustererRef = useRef<MarkerClusterer | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const zoomListenerRef = useRef<any>(null)
 
   const [mapsLoaded, setMapsLoaded] = useState(false)
   const [events, setEvents] = useState<EventWithDetails[]>([])
@@ -146,30 +159,91 @@ export default function TripPage() {
     })
   }, [])
 
-  // Update markers when events change or map becomes ready
+  // Update thumbnail overlays when events change or map becomes ready
   useEffect(() => {
     if (!mapRef.current) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const g = (window as any).google
     if (!g) return
 
-    clustererRef.current?.clearMarkers()
-    markersRef.current.forEach(m => m.setMap(null))
-    markersRef.current = []
+    // Remove previous overlays and zoom listener
+    overlaysRef.current.forEach(o => o.setMap(null))
+    overlaysRef.current = []
+    if (zoomListenerRef.current) g.maps.event.removeListener(zoomListenerRef.current)
 
-    const markers = events
-      .filter(e => e.venue_lat != null && e.venue_lng != null)
-      .map(event => {
-        const marker = new g.maps.Marker({
-          position: { lat: event.venue_lat, lng: event.venue_lng },
-          title: event.title,
+    const eventsWithCoords = events.filter(e => e.venue_lat != null && e.venue_lng != null)
+
+    function buildOverlayDiv(event: EventWithDetails, zoom: number): HTMLDivElement {
+      const div = document.createElement('div')
+      div.style.position = 'absolute'
+      div.style.cursor = 'pointer'
+      div.style.transform = 'translate(-50%, -50%)'
+      if (zoom >= 10 && event.cover_image_url) {
+        const img = document.createElement('img')
+        img.src = event.cover_image_url
+        img.style.cssText = 'width:48px;height:48px;border-radius:10px;object-fit:cover;border:2.5px solid white;box-shadow:0 3px 10px rgba(0,0,0,.35);display:block'
+        div.appendChild(img)
+      } else {
+        const circle = document.createElement('div')
+        const color = categoryColor(event)
+        circle.style.cssText = `width:20px;height:20px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)`
+        div.appendChild(circle)
+      }
+      return div
+    }
+
+    eventsWithCoords.forEach(event => {
+      const position = new g.maps.LatLng(event.venue_lat, event.venue_lng)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const overlay = new (g.maps.OverlayView as any)()
+      let div: HTMLDivElement | null = null
+
+      overlay.onAdd = function (this: typeof overlay) {
+        div = buildOverlayDiv(event, mapRef.current.getZoom() ?? 5)
+        div.addEventListener('click', (e: MouseEvent) => {
+          e.stopPropagation()
+          setSelectedEvent(event)
         })
-        marker.addListener('click', () => setSelectedEvent(event))
-        markersRef.current.push(marker)
-        return marker
-      })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(this.getPanes() as any).overlayMouseTarget.appendChild(div)
+      }
 
-    clustererRef.current = new MarkerClusterer({ map: mapRef.current, markers })
+      overlay.draw = function (this: typeof overlay) {
+        if (!div) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pt = (this.getProjection() as any).fromLatLngToDivPixel(position)
+        if (pt) { div.style.left = `${pt.x}px`; div.style.top = `${pt.y}px` }
+      }
+
+      overlay.onRemove = function () {
+        div?.parentNode?.removeChild(div)
+        div = null
+      }
+
+      overlay.updateZoom = function (zoom: number) {
+        if (!div) return
+        div.innerHTML = ''
+        div.style.transform = 'translate(-50%, -50%)'
+        if (zoom >= 10 && event.cover_image_url) {
+          const img = document.createElement('img')
+          img.src = event.cover_image_url
+          img.style.cssText = 'width:48px;height:48px;border-radius:10px;object-fit:cover;border:2.5px solid white;box-shadow:0 3px 10px rgba(0,0,0,.35);display:block'
+          div.appendChild(img)
+        } else {
+          const circle = document.createElement('div')
+          circle.style.cssText = `width:20px;height:20px;border-radius:50%;background:${categoryColor(event)};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)`
+          div.appendChild(circle)
+        }
+      }
+
+      overlay.setMap(mapRef.current)
+      overlaysRef.current.push(overlay)
+    })
+
+    zoomListenerRef.current = g.maps.event.addListener(mapRef.current, 'zoom_changed', () => {
+      const zoom = mapRef.current.getZoom() ?? 5
+      overlaysRef.current.forEach(o => o.updateZoom(zoom))
+    })
   }, [events, mapsLoaded])
 
   // Geocode city (debounced)
