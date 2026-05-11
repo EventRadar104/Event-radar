@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 import { createClient } from '@/lib/supabase/client'
 import type { EventWithDetails } from '@/lib/types'
+import { SaveButton } from '@/components/SaveButton'
 
 const CATEGORIES = [
   { slug: 'music',   label: 'Music' },
@@ -219,14 +220,6 @@ export default function TripPage() {
 
   function removeFromTrip(id: string) {
     setTripEvents(prev => prev.filter(e => e.id !== id))
-  }
-
-  async function saveEvent(event: EventWithDetails) {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { showToast('Log in to save events'); return }
-    await supabase.from('favorites').upsert({ user_id: user.id, event_id: event.id })
-    showToast('Event saved!')
   }
 
   function shareEvent(event: EventWithDetails) {
@@ -459,12 +452,9 @@ export default function TripPage() {
               >
                 ↗ Share event
               </button>
-              <button
-                onClick={() => saveEvent(selectedEvent)}
-                style={{ flex: 1, padding: '10px 0', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 500, background: 'var(--white)', cursor: 'pointer', color: 'var(--ink)' }}
-              >
-                ♡ Save event
-              </button>
+              <div style={{ flex: 1 }}>
+                <SaveButton eventId={selectedEvent.id} variant="inline" />
+              </div>
               <button
                 onClick={() => addToTrip(selectedEvent)}
                 style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 500, background: 'var(--green)', cursor: 'pointer', color: '#fff' }}

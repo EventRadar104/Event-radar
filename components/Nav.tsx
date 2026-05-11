@@ -37,7 +37,7 @@ export async function Nav() {
           Plan a trip
         </Link>
         {user && (
-          <Link href="/dashboard" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:4 }}>
+          <Link href="/saved" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:4 }}>
             <span>♡</span> Saved
           </Link>
         )}
