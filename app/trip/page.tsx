@@ -391,13 +391,22 @@ export default function TripPage() {
           onClick={e => { if (e.target === e.currentTarget) setSelectedEvent(null) }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
         >
-          <div style={{ background: 'var(--white)', borderRadius: 20, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 28, position: 'relative' }}>
+          <div style={{ background: 'var(--white)', borderRadius: 20, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0, position: 'relative' }}>
             <button
               onClick={() => setSelectedEvent(null)}
-              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: '1px solid var(--border)', borderRadius: '50%', width: 32, height: 32, fontSize: 18, cursor: 'pointer', color: 'var(--ink3)', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+              style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, background: selectedEvent.cover_image_url ? 'rgba(0,0,0,.35)' : 'none', border: '1px solid var(--border)', borderRadius: '50%', width: 32, height: 32, fontSize: 18, cursor: 'pointer', color: selectedEvent.cover_image_url ? '#fff' : 'var(--ink3)', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
             >
               ×
             </button>
+            {selectedEvent.cover_image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={selectedEvent.cover_image_url}
+                alt={selectedEvent.title}
+                style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: '20px 20px 0 0', display: 'block' }}
+              />
+            )}
+            <div style={{ padding: 28 }}>
 
             <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
               {selectedEvent.category_names?.[0] ?? ''}
@@ -461,6 +470,7 @@ export default function TripPage() {
               >
                 + Add to trip
               </button>
+            </div>
             </div>
           </div>
         </div>
