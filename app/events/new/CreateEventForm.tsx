@@ -208,7 +208,7 @@ export function CreateEventForm({ userId, categories }: Props) {
                 {categories.map(c => (
                   <button key={c.id} onClick={() => setCatId(catId === c.id ? '' : c.id)}
                     style={{ padding:10, borderRadius:10, border:`1.5px solid ${catId === c.id ? 'var(--green)' : 'var(--border)'}`, background: catId === c.id ? 'var(--green-lt)' : '#fff', color: catId === c.id ? 'var(--green)' : 'var(--ink2)', cursor:'pointer', display:'flex', alignItems:'center', gap:6, fontSize:13, transition:'all .15s' }}>
-                    {c.name.split('&')[0].trim()}
+                    {c.name.replace(/\p{Extended_Pictographic}\s*/gu, '').split('&')[0].trim()}
                   </button>
                 ))}
               </div>
