@@ -65,8 +65,15 @@ async function upsertVenue(v) {
     .select('id')
     .single()
   if (error) {
-    const { data } = await supabase.from('venues').select('id').eq('name', name).maybeSingle()
-    return data?.id ?? null
+    const { data: found } = await supabase.from('venues').select('id').eq('name', name).maybeSingle()
+    if (found?.id) {
+      const lat = location?.latitude ? parseFloat(location.latitude) : null
+      const lng = location?.longitude ? parseFloat(location.longitude) : null
+      if (lat != null && lng != null) {
+        await supabase.from('venues').update({ latitude: lat, longitude: lng }).eq('id', found.id)
+      }
+    }
+    return found?.id ?? null
   }
   return data?.id ?? null
 }
@@ -134,7 +141,7 @@ async function main() {
             cover_image_url: image?.url ?? null,
             starts_at: ev.dates?.start?.dateTime ?? `${ev.dates?.start?.localDate}T20:00:00Z`,
             venue_id: venueId,
-            is_free: ev.url && !price ? false : !!(price && price.min === 0 && price.max === 0),
+            is_free: price != null ? price.min === 0 : false,
             price_from: price?.min ?? null,
             price_to: price?.max ?? null,
             ticket_url: ev.url ?? null,
