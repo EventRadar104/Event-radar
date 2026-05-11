@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
+import { MarkerClusterer } from '@googlemaps/markerclusterer'
 import { createClient } from '@/lib/supabase/client'
 import type { EventWithDetails } from '@/lib/types'
 import { SaveButton } from '@/components/SaveButton'
@@ -54,36 +55,6 @@ function mapsUrl(e: EventWithDetails): string {
   )}`
 }
 
-function categoryIcon(e: EventWithDetails): string {
-  const s = e.category_slugs?.[0] ?? ''
-  if (s.includes('music') || s.includes('concert')) return '🎵'
-  if (s.includes('sport')) return '⚽'
-  if (s.includes('food') || s.includes('nightlife')) return '🍽️'
-  if (s.includes('art')) return '🎨'
-  if (s.includes('outdoor')) return '🌿'
-  if (s.includes('comedy')) return '😂'
-  if (s.includes('tech')) return '💻'
-  if (s.includes('culture')) return '🏛️'
-  return '📅'
-}
-
-function escSvg(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-function markerSvg(icon: string, title: string): string {
-  const label = escSvg(`${icon} ${title}`)
-  // rough width: ~8px per char + padding, capped at 200px
-  const pillW = Math.min(Math.max(label.length * 8 + 16, 80), 200)
-  const totalW = pillW + 22
-  return `<svg width="${totalW}" height="32" xmlns="http://www.w3.org/2000/svg">` +
-    `<circle cx="8" cy="16" r="7" fill="#EA4335"/>` +
-    `<circle cx="8" cy="16" r="3.5" fill="white"/>` +
-    `<rect x="18" y="2" width="${pillW}" height="28" rx="14" fill="white" stroke="#d0d0d0" stroke-width="1.5"/>` +
-    `<text x="30" y="21" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="600" fill="#222">${label}</text>` +
-    `</svg>`
-}
-
 function fmtDate(e: EventWithDetails): string {
   return new Date(e.starts_at).toLocaleDateString('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
@@ -98,6 +69,7 @@ export default function TripPage() {
   const markersRef = useRef<any[]>([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const geocoderRef = useRef<any>(null)
+  const clustererRef = useRef<MarkerClusterer | null>(null)
 
   const [mapsLoaded, setMapsLoaded] = useState(false)
   const [events, setEvents] = useState<EventWithDetails[]>([])
@@ -181,27 +153,23 @@ export default function TripPage() {
     const g = (window as any).google
     if (!g) return
 
+    clustererRef.current?.clearMarkers()
     markersRef.current.forEach(m => m.setMap(null))
     markersRef.current = []
 
-    events
+    const markers = events
       .filter(e => e.venue_lat != null && e.venue_lng != null)
-      .forEach(event => {
-        const icon = categoryIcon(event)
-        const shortTitle = event.title.length > 20 ? event.title.slice(0, 20) + '…' : event.title
-        const svg = markerSvg(icon, shortTitle)
+      .map(event => {
         const marker = new g.maps.Marker({
           position: { lat: event.venue_lat, lng: event.venue_lng },
-          map: mapRef.current,
           title: event.title,
-          icon: {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-            anchor: new g.maps.Point(8, 16),
-          },
         })
         marker.addListener('click', () => setSelectedEvent(event))
         markersRef.current.push(marker)
+        return marker
       })
+
+    clustererRef.current = new MarkerClusterer({ map: mapRef.current, markers })
   }, [events, mapsLoaded])
 
   // Geocode city (debounced)
