@@ -34,7 +34,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
   const [showAddEvent, setShowAddEvent] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<{ id: string; title: string; starts_at: string; venue_city: string | null }[]>([])
+  const [searchResults, setSearchResults] = useState<{ id: string; title: string; starts_at: string; venue_city: string | null; venue_name: string | null; cover_image_url: string | null }[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [addingEventId, setAddingEventId] = useState<string | null>(null)
   const [removingGroupEventId, setRemovingGroupEventId] = useState<string | null>(null)
@@ -159,7 +159,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
     const supabase = createClient()
     const { data } = await supabase
       .from('events_with_details')
-      .select('id, title, starts_at, venue_city')
+      .select('id, title, starts_at, venue_city, venue_name, cover_image_url')
       .eq('status', 'published')
       .ilike('title', `%${q}%`)
       .limit(8)
@@ -168,6 +168,8 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
       title: e.title,
       starts_at: e.starts_at,
       venue_city: e.venue_city ?? null,
+      venue_name: e.venue_name ?? null,
+      cover_image_url: e.cover_image_url ?? null,
     })))
     setSearchLoading(false)
   }
@@ -192,8 +194,8 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
         event_title: eventTitle,
         event_slug: null,
         event_starts_at: evDetail?.starts_at ?? '',
-        event_cover_image_url: null,
-        venue_name: null,
+        event_cover_image_url: evDetail?.cover_image_url ?? null,
+        venue_name: evDetail?.venue_name ?? null,
         venue_city: evDetail?.venue_city ?? null,
         votes_up: 0,
         votes_down: 0,
