@@ -116,3 +116,29 @@
 }
 
 .btn-external:hover { opacity: 0.85; }
+
+.event-card-heart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(4px);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: #c0392b;
+  transition: transform 0.1s ease;
+  padding: 0;
+}
+
+.event-card-heart:hover {
+  transform: scale(1.15);
+}
