@@ -28,10 +28,11 @@ export async function middleware(request: NextRequest) {
   // Refresh session — do NOT remove this call
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protect dashboard and create-event routes
+  // Protect dashboard, create-event, and groups routes
   if (!user && (
     request.nextUrl.pathname.startsWith('/dashboard') ||
-    request.nextUrl.pathname.startsWith('/events/new')
+    request.nextUrl.pathname.startsWith('/events/new') ||
+    request.nextUrl.pathname.startsWith('/groups')
   )) {
     const url = request.nextUrl.clone()
     url.pathname = '/sign-in'

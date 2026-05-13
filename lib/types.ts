@@ -7,7 +7,6 @@ export type UserRole = 'attendee' | 'organizer' | 'admin'
 export type EventStatus = 'draft' | 'published' | 'cancelled' | 'completed'
 export type EventSource = 'manual' | 'scraped'
 export type RsvpStatus = 'attending' | 'interested' | 'not_attending'
-export type VoteDirection = 'up' | 'down'
 
 // ── Raw table rows ────────────────────────
 
@@ -90,25 +89,18 @@ export interface Group {
   id: string
   name: string
   invite_code: string
-  creator_id: string | null
-  creator_name: string | null
-  scope_city: string | null
-  scope_date: string | null
-  scope_cat: string | null
+  cover_image_url: string | null
+  created_by: string | null
   created_at: string
-  updated_at: string
 }
 
 export interface GroupMember {
-  id: string
   group_id: string
-  user_id: string | null
-  guest_name: string | null
+  user_id: string
   joined_at: string
 }
 
 export interface GroupEvent {
-  id: string
   group_id: string
   event_id: string
   added_by: string | null
@@ -116,12 +108,40 @@ export interface GroupEvent {
 }
 
 export interface GroupVote {
-  id: string
-  group_event_id: string
-  voter_id: string | null
-  voter_name: string | null
-  direction: VoteDirection
-  voted_at: string
+  group_id: string
+  event_id: string
+  user_id: string
+  vote: 1 | -1
+}
+
+export interface GroupWithCounts extends Group {
+  member_count: number
+  event_count: number
+}
+
+export interface GroupMemberWithProfile {
+  group_id: string
+  user_id: string
+  joined_at: string
+  display_name: string | null
+  avatar_url: string | null
+}
+
+export interface GroupEventWithDetails {
+  group_id: string
+  event_id: string
+  added_by: string | null
+  added_at: string
+  event_title: string
+  event_slug: string | null
+  event_starts_at: string
+  event_cover_image_url: string | null
+  venue_name: string | null
+  venue_city: string | null
+  votes_up: number
+  votes_down: number
+  net_score: number
+  my_vote: 1 | -1 | null
 }
 
 // ── View shapes ───────────────────────────
@@ -137,34 +157,6 @@ export interface EventWithDetails extends Event {
   organizer_avatar: string | null
   category_slugs: string[] | null
   category_names: string[] | null
-}
-
-/** Returned by group_event_vote_summary */
-export interface VoteSummary {
-  group_event_id: string
-  group_id: string
-  event_id: string
-  votes_up: number
-  votes_down: number
-  net_score: number
-}
-
-/** Returned by get_group_by_invite_code() */
-export interface GroupEventRow {
-  group_id: string
-  group_name: string
-  scope_city: string | null
-  scope_date: string | null
-  scope_cat: string | null
-  member_count: number
-  event_id: string | null
-  event_title: string | null
-  event_date: string | null
-  venue_name: string | null
-  venue_city: string | null
-  votes_up: number
-  votes_down: number
-  net_score: number
 }
 
 /** Returned by organizer_event_stats */

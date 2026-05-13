@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getEventBySlug, getUserEventState } from '@/lib/queries'
 import { SaveButton } from '@/components/SaveButton'
 import { ShareButton } from '@/components/ShareButton'
+import { AddToGroupButton } from '@/components/AddToGroupModal'
 import ViewTracker from './ViewTracker'
 
 interface PageProps {
@@ -168,11 +169,9 @@ export default async function EventDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        <div style={{ display:'flex', gap:8, marginBottom:28 }}>
-          <ShareButton icon="↗" label="Share event" />
-          <Link href="/groups" style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', border:'1px solid var(--border)', borderRadius:20, fontSize:13, color:'var(--ink)', textDecoration:'none' }}>
-            👥 Add to group
-          </Link>
+        <div style={{ display:'flex', gap:8, marginBottom:28, flexWrap:'wrap' }}>
+          <ShareButton icon="↗" label="Share event" style={{ background: 'var(--green)', color: '#fff', border: 'none' }} />
+          <AddToGroupButton eventId={event.id} />
           <SaveButton eventId={event.id} initialSaved={userState.isFavorite} variant="card" />
         </div>
 

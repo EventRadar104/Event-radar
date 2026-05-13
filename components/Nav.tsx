@@ -41,6 +41,11 @@ export async function Nav() {
             <span>♡</span> Saved
           </Link>
         )}
+        {user && (
+          <Link href="/groups" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap' }}>
+            Groups
+          </Link>
+        )}
         <Link href="/events/new" style={{ background:'var(--ink)', color:'#fff', border:'none', borderRadius:40, padding:'8px 18px', fontSize:13, fontWeight:500, whiteSpace:'nowrap' }}>
           + Post event
         </Link>
