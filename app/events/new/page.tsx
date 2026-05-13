@@ -22,7 +22,7 @@ export default async function CreateEventPage() {
   // Load categories for the form
   const { data: categories } = await supabase
     .from('categories')
-    .select('id, name, slug, icon')
+    .select('id, name, slug')
     .order('name')
 
   return (

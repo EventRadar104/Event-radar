@@ -3,9 +3,12 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getEventBySlug, getUserEventState } from '@/lib/queries'
+import { createClient } from '@/lib/supabase/server'
+import type { RsvpStatus } from '@/lib/types'
 import { SaveButton } from '@/components/SaveButton'
 import { ShareButton } from '@/components/ShareButton'
 import { AddToGroupButton } from '@/components/AddToGroupModal'
+import { RsvpButton } from '@/components/RsvpButton'
 import ViewTracker from './ViewTracker'
 
 interface PageProps {
@@ -58,6 +61,17 @@ export default async function EventDetailPage({ params }: PageProps) {
   ])
   if (!event) notFound()
 
+  let attendingCount = 0
+  if (event.show_attending) {
+    const supabase = await createClient()
+    const { count } = await supabase
+      .from('rsvps')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', event.id)
+      .eq('status', 'attending')
+    attendingCount = count ?? 0
+  }
+
   const price = event.is_free
     ? { text: 'Free', free: true }
     : event.price_from && event.price_to
@@ -103,13 +117,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             sizes="100vw"
           />
         ) : (
-          <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, textAlign:'center', padding:24 }}>
-            <div style={{ fontSize:72, opacity:.6 }}>
-              {event.category_slugs?.[0]?.includes('music') ? '🎵'
-                : event.category_slugs?.[0]?.includes('sport') ? '⚽'
-                : event.category_slugs?.[0]?.includes('food') ? '🍽️'
-                : '📅'}
-            </div>
+          <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textAlign:'center', padding:24 }}>
             <div style={{ fontSize:18, fontWeight:500, color:'rgba(255,255,255,.7)', maxWidth:500, lineHeight:1.3 }}>{event.title}</div>
           </div>
         )}
@@ -170,6 +178,13 @@ export default async function EventDetailPage({ params }: PageProps) {
         )}
 
         <div style={{ display:'flex', gap:8, marginBottom:28, flexWrap:'wrap' }}>
+          {event.show_attending && (
+            <RsvpButton
+              eventId={event.id}
+              initialStatus={userState.rsvpStatus as RsvpStatus | null}
+              initialCount={attendingCount}
+            />
+          )}
           <ShareButton icon="↗" label="Share event" style={{ background: 'var(--green)', color: '#fff', border: 'none' }} />
           <AddToGroupButton eventId={event.id} />
           <SaveButton eventId={event.id} initialSaved={userState.isFavorite} variant="card" />

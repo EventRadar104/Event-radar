@@ -26,7 +26,6 @@ export interface Category {
   id: string
   name: string
   slug: string
-  icon: string | null
   description: string | null
   created_at: string
 }
@@ -62,6 +61,7 @@ export interface Event {
   price_from: number | null
   price_to: number | null
   ticket_url: string | null
+  show_attending: boolean
   status: EventStatus
   source: EventSource
   source_url: string | null
