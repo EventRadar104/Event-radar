@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CreateEventForm } from './CreateEventForm'
+import { BackButton } from '@/components/BackButton'
 
 export const metadata = {
   title: 'Post an event — Event Radar',
@@ -27,9 +28,7 @@ export default async function CreateEventPage() {
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 24px 100px' }}>
-      <a href="/dashboard" style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:13, color:'var(--ink3)', marginBottom:32, textDecoration:'none' }}>
-        ← Back to dashboard
-      </a>
+      <BackButton label="← Back to dashboard" style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:13, color:'var(--ink3)', marginBottom:32 }} />
       <h1 style={{ fontSize:32, marginBottom:6 }}>Post an event</h1>
       <p style={{ fontSize:14, color:'var(--ink3)', marginBottom:32 }}>Free to post on Event Radar 🇳🇴</p>
 

@@ -1,7 +1,9 @@
 'use client'
 import './EventCard.css'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { createClient } from '@/lib/supabase/client'
 import type { EventWithDetails } from '@/lib/types'
 
 function categoryToPhClass(slugs: string[] | null): string {
@@ -35,10 +37,56 @@ export interface EventCardProps {
   event: EventWithDetails
 }
 
+const LS_KEY = 'saved_events'
+
+function getSavedIds(): string[] {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') } catch { return [] }
+}
+
 export function EventCard({ event }: EventCardProps) {
   const categoryPh = categoryToPhClass(event.category_slugs)
   const formattedDate = formatDate(event.starts_at)
   const venue = event.venue_name ?? event.venue_city ?? ''
+
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    setSaved(getSavedIds().includes(event.id))
+    // Execute pending save intent from sign-in redirect
+    try {
+      const raw = sessionStorage.getItem('save_event_intent')
+      if (!raw) return
+      const intent = JSON.parse(raw)
+      if (intent?.eventId === event.id) {
+        sessionStorage.removeItem('save_event_intent')
+        const ids = getSavedIds()
+        if (!ids.includes(event.id)) {
+          localStorage.setItem(LS_KEY, JSON.stringify([...ids, event.id]))
+        }
+        setSaved(true)
+      }
+    } catch {}
+  }, [event.id])
+
+  async function handleHeart(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      sessionStorage.setItem('save_event_intent', JSON.stringify({ eventId: event.id }))
+      window.location.href = `/sign-in?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
+      return
+    }
+    const ids = getSavedIds()
+    if (saved) {
+      localStorage.setItem(LS_KEY, JSON.stringify(ids.filter((x: string) => x !== event.id)))
+      setSaved(false)
+    } else {
+      if (!ids.includes(event.id)) localStorage.setItem(LS_KEY, JSON.stringify([...ids, event.id]))
+      setSaved(true)
+    }
+  }
 
   return (
     <Link href={`/events/${event.slug ?? event.id}`} className="event-card">
@@ -52,6 +100,9 @@ export function EventCard({ event }: EventCardProps) {
             style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
           />
         )}
+        <button className="event-card-heart" onClick={handleHeart} aria-label={saved ? 'Remove from saved' : 'Save event'}>
+          {saved ? '♥' : '♡'}
+        </button>
       </div>
       <div className="event-card-body">
         <h3 className="event-card-title">{event.title}</h3>

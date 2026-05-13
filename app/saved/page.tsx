@@ -3,12 +3,32 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { EventCard } from '@/components/EventCard'
+import { createClient } from '@/lib/supabase/client'
 import type { EventWithDetails } from '@/lib/types'
 
 const LS_KEY = 'saved_events'
 
+interface SavedTrip {
+  id: string
+  city: string | null
+  events: Array<{ id: string; title: string; starts_at: string; venue_city: string | null }>
+  created_at: string
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    </svg>
+  )
+}
+
 export default function SavedPage() {
   const [events, setEvents] = useState<EventWithDetails[] | null>(null)
+  const [trips, setTrips] = useState<SavedTrip[] | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     let ids: string[] = []
@@ -19,14 +39,33 @@ export default function SavedPage() {
 
     if (ids.length === 0) {
       setEvents([])
-      return
+    } else {
+      fetch(`/api/events-by-ids?ids=${ids.join(',')}`)
+        .then(r => r.json())
+        .then(setEvents)
+        .catch(() => setEvents([]))
     }
 
-    fetch(`/api/events-by-ids?ids=${ids.join(',')}`)
-      .then(r => r.json())
-      .then(setEvents)
-      .catch(() => setEvents([]))
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { setTrips([]); return }
+      supabase
+        .from('saved_trips')
+        .select('id, city, events, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => setTrips((data ?? []) as SavedTrip[]))
+    })
   }, [])
+
+  async function handleDeleteTrip(id: string) {
+    setDeletingId(id)
+    const supabase = createClient()
+    await supabase.from('saved_trips').delete().eq('id', id)
+    setTrips(prev => prev?.filter(t => t.id !== id) ?? null)
+    setDeleteConfirmId(null)
+    setDeletingId(null)
+  }
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px 100px' }}>
@@ -56,6 +95,65 @@ export default function SavedPage() {
           {events.map(event => (
             <EventCard key={event.id} event={event} />
           ))}
+        </div>
+      )}
+
+      {/* Saved trips */}
+      {trips !== null && trips.length > 0 && (
+        <div style={{ marginTop: 56 }}>
+          <h2 style={{ fontSize: 22, marginBottom: 16 }}>Saved trips</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {trips.map(trip => {
+              const eventCount = Array.isArray(trip.events) ? trip.events.length : 0
+              const firstDate = Array.isArray(trip.events) && trip.events[0]?.starts_at
+                ? new Date(trip.events[0].starts_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                : null
+              const label = trip.city ?? trip.events?.[0]?.venue_city ?? 'Trip'
+              const ids = Array.isArray(trip.events) ? trip.events.map((e: { id: string }) => e.id).join(',') : ''
+
+              if (deleteConfirmId === trip.id) {
+                return (
+                  <div key={trip.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, background: '#fff5f5', border: '1px solid #fca5a5', borderRadius: 14, padding: 20 }}>
+                      <p style={{ fontSize: 14, fontWeight: 500, color: '#c0392b', marginBottom: 6 }}>Delete &ldquo;{label}&rdquo;?</p>
+                      <p style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 14 }}>This cannot be undone.</p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => setDeleteConfirmId(null)} style={{ flex: 1, padding: '9px 0', border: '1.5px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 500, background: 'none', cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={() => handleDeleteTrip(trip.id)} disabled={deletingId === trip.id} style={{ flex: 1, padding: '9px 0', background: deletingId === trip.id ? 'var(--border)' : '#c0392b', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: deletingId === trip.id ? 'default' : 'pointer' }}>
+                          {deletingId === trip.id ? 'Deleting…' : 'Yes, delete'}
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ width: 32, flexShrink: 0 }} />
+                  </div>
+                )
+              }
+
+              return (
+                <div key={trip.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Link
+                    href={`/trip?events=${ids}`}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 14, textDecoration: 'none', color: 'inherit' }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--green-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                      🗺️
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 3 }}>{label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                        {eventCount} event{eventCount !== 1 ? 's' : ''}
+                        {firstDate ? ` · from ${firstDate}` : ''}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--ink4)', flexShrink: 0 }}>→</div>
+                  </Link>
+                  <button onClick={() => setDeleteConfirmId(trip.id)} title="Delete trip" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', flexShrink: 0, padding: '6px', display: 'flex', alignItems: 'center' }}>
+                    <TrashIcon />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
