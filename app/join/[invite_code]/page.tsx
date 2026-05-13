@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getGroupPublicInfo } from '@/lib/queries'
 import { JoinGroupClient } from './JoinGroupClient'
-import { GroupAvatar } from '@/app/groups/page'
+import { GroupAvatar } from '@/components/groups/GroupAvatar'
 
 interface PageProps {
   params: Promise<{ invite_code: string }>

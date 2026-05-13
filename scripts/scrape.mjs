@@ -102,7 +102,6 @@ async function main() {
         const venueId = await upsertVenue(ev._embedded?.venues?.[0])
         const catSlug = getCategorySlug(ev.classifications)
         const catId = await getCatId(catSlug)
-        const price = ev.priceRanges?.[0]
         const image = ev.images?.find(i => i.ratio === '16_9' && i.width >= 1000) ?? ev.images?.[0]
         const slug = makeSlug(ev.name, ev.id)
 
@@ -114,7 +113,7 @@ async function main() {
         if (isVipVariant && venueId) {
           const { data: parent } = await supabase
             .from('events')
-            .select('id, price_to')
+            .select('id')
             .eq('venue_id', venueId)
             .gte('starts_at', dateOnly + 'T00:00:00Z')
             .lte('starts_at', dateOnly + 'T23:59:59Z')
@@ -123,10 +122,7 @@ async function main() {
             .maybeSingle()
 
           if (parent) {
-            // Update price_to so card shows "fra X kr" to "Y kr"
-            const newPriceTo = price?.max ?? parent.price_to
-            await supabase.from('events').update({ price_to: newPriceTo }).eq('id', parent.id)
-            console.log(`  ↩ Merged VIP price into: ${baseTitle}`)
+            console.log(`  ↩ Skipped VIP variant: ${ev.name}`)
             continue
           }
           // No parent found yet — fall through and insert as normal
@@ -141,9 +137,9 @@ async function main() {
             cover_image_url: image?.url ?? null,
             starts_at: ev.dates?.start?.dateTime ?? `${ev.dates?.start?.localDate}T20:00:00Z`,
             venue_id: venueId,
-            is_free: price != null ? price.min === 0 : false,
-            price_from: price?.min ?? null,
-            price_to: price?.max ?? null,
+            is_free: false,
+            price_from: null,
+            price_to: null,
             ticket_url: ev.url ?? null,
             status: 'published',
             source: 'scraped',

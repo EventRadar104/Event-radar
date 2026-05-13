@@ -6,14 +6,12 @@ import type { EventWithDetails } from '@/lib/types'
 import { SaveButton } from '@/components/SaveButton'
 
 const CATEGORIES = [
-  { slug: 'music',   label: 'Music' },
-  { slug: 'sports',  label: 'Sports' },
-  { slug: 'food',    label: 'Food & Drink' },
-  { slug: 'arts',    label: 'Arts' },
-  { slug: 'outdoor', label: 'Outdoor' },
-  { slug: 'culture', label: 'Culture' },
-  { slug: 'comedy',  label: 'Comedy' },
-  { slug: 'tech',    label: 'Technology' },
+  { slug: 'concerts-music', label: 'Music' },
+  { slug: 'sports',         label: 'Sports' },
+  { slug: 'food-nightlife', label: 'Food & Drink' },
+  { slug: 'culture-arts',   label: 'Arts & Culture' },
+  { slug: 'outdoors',       label: 'Outdoor' },
+  { slug: 'comedy',         label: 'Comedy' },
 ]
 
 type DateMode = 'single' | 'range' | 'weekend'
@@ -114,8 +112,9 @@ export default function TripPage() {
         .select('*')
         .eq('status', 'published')
         .gt('starts_at', new Date().toISOString())
+        .not('venue_lat', 'is', null)
+        .not('venue_lng', 'is', null)
         .order('starts_at', { ascending: true })
-        .limit(100)
 
       const sharedQuery =
         sharedIds.length > 0
@@ -127,7 +126,9 @@ export default function TripPage() {
         sharedQuery ?? Promise.resolve({ data: null }),
       ])
 
-      setEvents((discoverResult.data ?? []) as EventWithDetails[])
+      const loadedEvents = (discoverResult.data ?? []) as EventWithDetails[]
+      console.log(`[TripMap] Events lastet: ${loadedEvents.length}`)
+      setEvents(loadedEvents)
       if (sharedResult.data && sharedResult.data.length > 0) {
         setTripEvents(sharedResult.data as EventWithDetails[])
       }
@@ -284,10 +285,12 @@ export default function TripPage() {
       from_date:     fromISO,
       to_date:       toISO,
       only_free:     false,
-      result_limit:  100,
+      result_limit:  10000,
       result_offset: 0,
     })
-    setEvents((data ?? []) as EventWithDetails[])
+    const searchedEvents = (data ?? []) as EventWithDetails[]
+    console.log(`[TripMap] Søkeresultat: ${searchedEvents.length} events`)
+    setEvents(searchedEvents)
     setLoading(false)
   }
 
