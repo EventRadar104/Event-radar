@@ -10,7 +10,12 @@ const inputStyle: React.CSSProperties = {
   fontSize: 14, outline: 'none', background: '#fff',
 }
 
-export function CreateGroupModal({ userId }: { userId: string }) {
+interface Props {
+  userId: string
+  userDisplayName: string | null
+}
+
+export function CreateGroupModal({ userId, userDisplayName }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -66,7 +71,12 @@ export function CreateGroupModal({ userId }: { userId: string }) {
 
       const { data: group, error: insertErr } = await supabase
         .from('groups')
-        .insert({ name: name.trim(), created_by: userId, cover_image_url: coverUrl })
+        .insert({
+          name: name.trim(),
+          creator_id: userId,
+          creator_name: userDisplayName ?? userId,
+          cover_image_url: coverUrl,
+        })
         .select('id')
         .single()
 

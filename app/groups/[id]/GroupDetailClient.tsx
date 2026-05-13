@@ -15,7 +15,7 @@ interface Props {
   isAdmin: boolean
 }
 
-type VoteState = Record<string, { up: number; down: number; myVote: 1 | -1 | null }>
+type VoteState = Record<string, { up: number; down: number; myVote: 'up' | 'down' | null }>
 
 export function GroupDetailClient({ group, initialEvents, initialMembers, userId, isAdmin }: Props) {
   const router = useRouter()
@@ -37,79 +37,110 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
   const [searchResults, setSearchResults] = useState<{ id: string; title: string; starts_at: string; venue_city: string | null }[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [addingEventId, setAddingEventId] = useState<string | null>(null)
-  const [removingEventId, setRemovingEventId] = useState<string | null>(null)
+  const [removingGroupEventId, setRemovingGroupEventId] = useState<string | null>(null)
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
 
+  // Sort events by current net vote score
   const sortedEvents = [...events].sort((a, b) => {
     const va = votes[a.event_id] ?? { up: 0, down: 0, myVote: null }
     const vb = votes[b.event_id] ?? { up: 0, down: 0, myVote: null }
     return (vb.up - vb.down) - (va.up - va.down)
   })
 
-  const topEventId = sortedEvents[0]?.event_id
-  const topScore = sortedEvents[0] ? (votes[sortedEvents[0].event_id]?.up ?? 0) - (votes[sortedEvents[0].event_id]?.down ?? 0) : 0
+  const topScore = sortedEvents[0]
+    ? (votes[sortedEvents[0].event_id]?.up ?? 0) - (votes[sortedEvents[0].event_id]?.down ?? 0)
+    : 0
+  const topEventId = topScore > 0 ? sortedEvents[0]?.event_id : null
 
-  async function handleVote(eventId: string, vote: 1 | -1) {
+  // ── Voting ────────────────────────────────
+
+  async function handleVote(groupEventId: string, eventId: string, direction: 'up' | 'down') {
     const current = votes[eventId] ?? { up: 0, down: 0, myVote: null }
     const supabase = createClient()
 
-    if (current.myVote === vote) {
-      // Toggle off
+    if (current.myVote === direction) {
+      // Toggle off — optimistic
       setVotes(prev => ({
         ...prev,
         [eventId]: {
-          up: vote === 1 ? prev[eventId].up - 1 : prev[eventId].up,
-          down: vote === -1 ? prev[eventId].down - 1 : prev[eventId].down,
+          up: direction === 'up' ? Math.max(0, (prev[eventId]?.up ?? 0) - 1) : (prev[eventId]?.up ?? 0),
+          down: direction === 'down' ? Math.max(0, (prev[eventId]?.down ?? 0) - 1) : (prev[eventId]?.down ?? 0),
           myVote: null,
         },
       }))
-      await supabase.from('group_votes')
-        .delete()
-        .eq('group_id', group.id)
-        .eq('event_id', eventId)
-        .eq('user_id', userId)
+      const { data: existing } = await supabase
+        .from('group_votes')
+        .select('id')
+        .eq('group_event_id', groupEventId)
+        .eq('voter_id', userId)
+        .maybeSingle()
+      if (existing) {
+        await supabase.from('group_votes').delete().eq('id', existing.id)
+      }
     } else {
-      const wasUp = current.myVote === 1
-      const wasDown = current.myVote === -1
-      setVotes(prev => ({
-        ...prev,
-        [eventId]: {
-          up: vote === 1 ? prev[eventId].up + 1 : wasUp ? prev[eventId].up - 1 : prev[eventId].up,
-          down: vote === -1 ? prev[eventId].down + 1 : wasDown ? prev[eventId].down - 1 : prev[eventId].down,
-          myVote: vote,
-        },
-      }))
-      await supabase.from('group_votes')
-        .upsert({ group_id: group.id, event_id: eventId, user_id: userId, vote })
+      const wasUp = current.myVote === 'up'
+      const wasDown = current.myVote === 'down'
+      // Optimistic update
+      setVotes(prev => {
+        const cur = prev[eventId] ?? { up: 0, down: 0, myVote: null }
+        return {
+          ...prev,
+          [eventId]: {
+            up: direction === 'up'
+              ? cur.up + 1
+              : wasUp ? Math.max(0, cur.up - 1) : cur.up,
+            down: direction === 'down'
+              ? cur.down + 1
+              : wasDown ? Math.max(0, cur.down - 1) : cur.down,
+            myVote: direction,
+          },
+        }
+      })
+      // Check for existing vote to update vs insert
+      const { data: existing } = await supabase
+        .from('group_votes')
+        .select('id')
+        .eq('group_event_id', groupEventId)
+        .eq('voter_id', userId)
+        .maybeSingle()
+      if (existing) {
+        await supabase.from('group_votes').update({ direction }).eq('id', existing.id)
+      } else {
+        await supabase.from('group_votes').insert({
+          group_event_id: groupEventId,
+          voter_id: userId,
+          direction,
+        })
+      }
     }
   }
 
-  async function handleRemoveEvent(eventId: string) {
-    setRemovingEventId(eventId)
+  // ── Remove event ──────────────────────────
+
+  async function handleRemoveEvent(groupEventId: string, eventId: string) {
+    setRemovingGroupEventId(groupEventId)
     const supabase = createClient()
-    await supabase.from('group_events')
-      .delete()
-      .eq('group_id', group.id)
-      .eq('event_id', eventId)
-    setEvents(prev => prev.filter(e => e.event_id !== eventId))
+    await supabase.from('group_events').delete().eq('id', groupEventId)
+    setEvents(prev => prev.filter(e => e.group_event_id !== groupEventId))
     setVotes(prev => {
       const next = { ...prev }
       delete next[eventId]
       return next
     })
-    setRemovingEventId(null)
+    setRemovingGroupEventId(null)
   }
+
+  // ── Remove member ─────────────────────────
 
   async function handleRemoveMember(memberId: string) {
     setRemovingMemberId(memberId)
     const supabase = createClient()
-    await supabase.from('group_members')
-      .delete()
-      .eq('group_id', group.id)
-      .eq('user_id', memberId)
-    setMembers(prev => prev.filter(m => m.user_id !== memberId))
+    await supabase.from('group_members').delete().eq('id', memberId)
+    setMembers(prev => prev.filter(m => m.id !== memberId))
     setRemovingMemberId(null)
   }
+
+  // ── Delete group ──────────────────────────
 
   async function handleDeleteGroup() {
     startTransition(async () => {
@@ -118,6 +149,8 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
       router.push('/groups')
     })
   }
+
+  // ── Event search ──────────────────────────
 
   async function handleSearch(q: string) {
     setSearchQuery(q)
@@ -134,7 +167,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
       id: e.id,
       title: e.title,
       starts_at: e.starts_at,
-      venue_city: e.venue_city,
+      venue_city: e.venue_city ?? null,
     })))
     setSearchLoading(false)
   }
@@ -142,14 +175,16 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
   async function handleAddEvent(eventId: string, eventTitle: string) {
     setAddingEventId(eventId)
     const supabase = createClient()
-    const { error } = await supabase.from('group_events').insert({
-      group_id: group.id,
-      event_id: eventId,
-      added_by: userId,
-    })
-    if (!error) {
+    const { data: ge, error } = await supabase
+      .from('group_events')
+      .insert({ group_id: group.id, event_id: eventId, added_by: userId })
+      .select('id')
+      .single()
+
+    if (!error && ge) {
       const evDetail = searchResults.find(r => r.id === eventId)
       setEvents(prev => [...prev, {
+        group_event_id: ge.id,
         group_id: group.id,
         event_id: eventId,
         added_by: userId,
@@ -177,7 +212,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
 
   return (
     <>
-      {/* Events */}
+      {/* ── Events ────────────────────────────── */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h2 style={{ fontSize: 20 }}>Events</h2>
@@ -189,7 +224,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
           </button>
         </div>
 
-        {/* Add event search */}
+        {/* Search to add event */}
         {showAddEvent && (
           <div style={{ background: 'var(--white)', border: '1.5px solid var(--green)', borderRadius: 14, padding: 16, marginBottom: 14 }}>
             <input
@@ -201,7 +236,9 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
               onFocus={e => (e.target.style.borderColor = 'var(--ink)')}
               onBlur={e => (e.target.style.borderColor = 'var(--border)')}
             />
-            {searchLoading && <div style={{ fontSize: 13, color: 'var(--ink3)', padding: '8px 4px' }}>Searching…</div>}
+            {searchLoading && (
+              <div style={{ fontSize: 13, color: 'var(--ink3)', padding: '8px 4px' }}>Searching…</div>
+            )}
             {searchResults.length > 0 && (
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {searchResults.map(r => {
@@ -255,17 +292,17 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
             {sortedEvents.map((ev, idx) => {
               const v = votes[ev.event_id] ?? { up: 0, down: 0, myVote: null }
               const netScore = v.up - v.down
-              const isLeading = idx === 0 && topScore > 0 && ev.event_id === topEventId
+              const isLeading = idx === 0 && ev.event_id === topEventId
               const canRemove = isAdmin || ev.added_by === userId
               return (
                 <EventVoteRow
-                  key={ev.event_id}
+                  key={ev.group_event_id}
                   ev={ev}
                   votes={v}
                   netScore={netScore}
                   isLeading={isLeading}
                   canRemove={canRemove}
-                  removing={removingEventId === ev.event_id}
+                  removing={removingGroupEventId === ev.group_event_id}
                   onVote={handleVote}
                   onRemove={handleRemoveEvent}
                 />
@@ -275,24 +312,26 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
         )}
       </div>
 
-      {/* Members */}
+      {/* ── Members ───────────────────────────── */}
       <div style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 20, marginBottom: 14 }}>Members</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {members.map(m => (
-            <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12 }}>
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12 }}>
               <MemberAvatar name={m.display_name} imageUrl={m.avatar_url} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{m.display_name ?? 'Member'}</div>
-                {group.created_by === m.user_id && (
+                <div style={{ fontSize: 14, fontWeight: 500 }}>
+                  {m.display_name ?? m.guest_name ?? 'Member'}
+                </div>
+                {group.creator_id === m.user_id && (
                   <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 500 }}>Admin</div>
                 )}
               </div>
               {isAdmin && m.user_id !== userId && (
                 <button
-                  onClick={() => handleRemoveMember(m.user_id)}
-                  disabled={removingMemberId === m.user_id}
-                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 11px', fontSize: 12, color: '#c0392b', cursor: 'pointer', opacity: removingMemberId === m.user_id ? .5 : 1 }}
+                  onClick={() => handleRemoveMember(m.id)}
+                  disabled={removingMemberId === m.id}
+                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 11px', fontSize: 12, color: '#c0392b', cursor: 'pointer', opacity: removingMemberId === m.id ? .5 : 1 }}
                 >
                   Remove
                 </button>
@@ -302,7 +341,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
         </div>
       </div>
 
-      {/* Danger zone — delete group */}
+      {/* ── Delete group (admin only) ─────────── */}
       {isAdmin && (
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24 }}>
           {!showDeleteConfirm ? (
@@ -345,20 +384,25 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
 
 function EventVoteRow({ ev, votes, netScore, isLeading, canRemove, removing, onVote, onRemove }: {
   ev: GroupEventWithDetails
-  votes: { up: number; down: number; myVote: 1 | -1 | null }
+  votes: { up: number; down: number; myVote: 'up' | 'down' | null }
   netScore: number
   isLeading: boolean
   canRemove: boolean
   removing: boolean
-  onVote: (eventId: string, vote: 1 | -1) => void
-  onRemove: (eventId: string) => void
+  onVote: (groupEventId: string, eventId: string, direction: 'up' | 'down') => void
+  onRemove: (groupEventId: string, eventId: string) => void
 }) {
   const date = ev.event_starts_at
     ? new Date(ev.event_starts_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
     : null
 
   return (
-    <div style={{ background: 'var(--white)', border: `1.5px solid ${isLeading ? 'var(--green)' : 'var(--border)'}`, borderRadius: 14, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+    <div style={{
+      background: 'var(--white)',
+      border: `1.5px solid ${isLeading ? 'var(--green)' : 'var(--border)'}`,
+      borderRadius: 14, padding: '14px 16px',
+      display: 'flex', gap: 12, alignItems: 'flex-start',
+    }}>
       {/* Cover thumbnail */}
       {ev.event_cover_image_url ? (
         <div style={{ width: 52, height: 52, borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
@@ -370,13 +414,13 @@ function EventVoteRow({ ev, votes, netScore, isLeading, canRemove, removing, onV
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
-          {isLeading && (
-            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', background: 'var(--green)', color: '#fff', borderRadius: 20, padding: '2px 8px', flexShrink: 0 }}>
+        {isLeading && (
+          <div style={{ marginBottom: 4 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', background: 'var(--green)', color: '#fff', borderRadius: 20, padding: '2px 8px' }}>
               Leading
             </span>
-          )}
-        </div>
+          </div>
+        )}
         {ev.event_slug ? (
           <Link href={`/events/${ev.event_slug}`} style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)', textDecoration: 'none', display: 'block', marginBottom: 3 }}>
             {ev.event_title}
@@ -390,27 +434,27 @@ function EventVoteRow({ ev, votes, netScore, isLeading, canRemove, removing, onV
       </div>
 
       {/* Vote controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 6 }}>
           <VoteButton
-            label={`+${votes.up}`}
-            active={votes.myVote === 1}
-            onClick={() => onVote(ev.event_id, 1)}
+            label={String(votes.up)}
+            active={votes.myVote === 'up'}
+            onClick={() => onVote(ev.group_event_id, ev.event_id, 'up')}
             variant="up"
           />
           <VoteButton
-            label={`-${votes.down}`}
-            active={votes.myVote === -1}
-            onClick={() => onVote(ev.event_id, -1)}
+            label={String(votes.down)}
+            active={votes.myVote === 'down'}
+            onClick={() => onVote(ev.group_event_id, ev.event_id, 'down')}
             variant="down"
           />
         </div>
         <div style={{ fontSize: 11, color: netScore > 0 ? 'var(--green)' : netScore < 0 ? '#c0392b' : 'var(--ink4)', fontWeight: 500 }}>
-          {netScore > 0 ? `+${netScore}` : netScore}
+          {netScore > 0 ? `+${netScore}` : String(netScore)}
         </div>
         {canRemove && (
           <button
-            onClick={() => onRemove(ev.event_id)}
+            onClick={() => onRemove(ev.group_event_id, ev.event_id)}
             disabled={removing}
             style={{ fontSize: 11, color: 'var(--ink4)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, opacity: removing ? .5 : 1 }}
           >
@@ -434,7 +478,7 @@ function VoteButton({ label, active, onClick, variant }: {
     <button
       onClick={onClick}
       style={{
-        display: 'flex', alignItems: 'center', gap: 4,
+        display: 'flex', alignItems: 'center', gap: 3,
         padding: '5px 10px', borderRadius: 8,
         border: `1.5px solid ${active ? activeColor : 'var(--border)'}`,
         background: active ? activeBg : '#fff',
@@ -443,7 +487,7 @@ function VoteButton({ label, active, onClick, variant }: {
         transition: 'all .15s',
       }}
     >
-      {variant === 'up' ? '↑' : '↓'} {label}
+      <span style={{ fontSize: 10 }}>{variant === 'up' ? '▲' : '▼'}</span> {label}
     </button>
   )
 }

@@ -25,13 +25,25 @@ export function JoinGroupClient({ groupId, inviteCode, isLoggedIn, userId }: Pro
     setError('')
     startTransition(async () => {
       const supabase = createClient()
-      const { error: err } = await supabase
+
+      // Guard against duplicate membership
+      const { data: existing } = await supabase
         .from('group_members')
-        .insert({ group_id: groupId, user_id: userId })
-      if (err) {
-        setError('Something went wrong — please try again.')
-        return
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (!existing) {
+        const { error: err } = await supabase
+          .from('group_members')
+          .insert({ group_id: groupId, user_id: userId })
+        if (err) {
+          setError('Something went wrong — please try again.')
+          return
+        }
       }
+
       router.push(`/groups/${groupId}`)
     })
   }

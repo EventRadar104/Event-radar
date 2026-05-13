@@ -9,6 +9,7 @@ import {
 } from '@/lib/queries'
 import { GroupAvatar } from '../page'
 import { GroupDetailClient } from './GroupDetailClient'
+import { CopyButton } from './CopyButton'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -41,7 +42,7 @@ export default async function GroupDetailPage({ params }: PageProps) {
 
   if (!group) notFound()
 
-  const isAdmin = group.created_by === user.id
+  const isAdmin = group.creator_id === user.id
   const inviteUrl = `eventrada.no/join/${group.invite_code}`
 
   return (
@@ -72,7 +73,16 @@ export default async function GroupDetailPage({ params }: PageProps) {
         <p style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '.05em', fontWeight: 500 }}>
           Invite link
         </p>
-        <InviteLinkBox url={inviteUrl} />
+        <div style={{
+          background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.15)',
+          borderRadius: 10, padding: '10px 14px',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {inviteUrl}
+          </span>
+          <CopyButton url={`https://${inviteUrl}`} />
+        </div>
       </div>
 
       <GroupDetailClient
@@ -82,24 +92,6 @@ export default async function GroupDetailPage({ params }: PageProps) {
         userId={user.id}
         isAdmin={isAdmin}
       />
-    </div>
-  )
-}
-
-// Tiny server-side wrapper — CopyButton handles clipboard interactivity
-import { CopyButton } from './CopyButton'
-
-function InviteLinkBox({ url }: { url: string }) {
-  return (
-    <div style={{
-      background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.15)',
-      borderRadius: 10, padding: '10px 14px',
-      display: 'flex', alignItems: 'center', gap: 10,
-    }}>
-      <span style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {url}
-      </span>
-      <CopyButton url={`https://${url}`} />
     </div>
   )
 }

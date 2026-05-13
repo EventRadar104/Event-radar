@@ -90,17 +90,25 @@ export interface Group {
   name: string
   invite_code: string
   cover_image_url: string | null
-  created_by: string | null
+  creator_id: string | null
+  creator_name: string | null
+  scope_city: string | null
+  scope_date: string | null
+  scope_cat: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface GroupMember {
+  id: string
   group_id: string
-  user_id: string
+  user_id: string | null
+  guest_name: string | null
   joined_at: string
 }
 
 export interface GroupEvent {
+  id: string
   group_id: string
   event_id: string
   added_by: string | null
@@ -108,10 +116,12 @@ export interface GroupEvent {
 }
 
 export interface GroupVote {
-  group_id: string
-  event_id: string
-  user_id: string
-  vote: 1 | -1
+  id: string
+  group_event_id: string
+  voter_id: string | null
+  voter_name: string | null
+  direction: 'up' | 'down'
+  voted_at: string
 }
 
 export interface GroupWithCounts extends Group {
@@ -120,14 +130,17 @@ export interface GroupWithCounts extends Group {
 }
 
 export interface GroupMemberWithProfile {
+  id: string
   group_id: string
-  user_id: string
+  user_id: string | null
+  guest_name: string | null
   joined_at: string
   display_name: string | null
   avatar_url: string | null
 }
 
 export interface GroupEventWithDetails {
+  group_event_id: string
   group_id: string
   event_id: string
   added_by: string | null
@@ -141,7 +154,7 @@ export interface GroupEventWithDetails {
   votes_up: number
   votes_down: number
   net_score: number
-  my_vote: 1 | -1 | null
+  my_vote: 'up' | 'down' | null
 }
 
 // ── View shapes ───────────────────────────

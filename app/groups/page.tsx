@@ -16,13 +16,18 @@ export default async function GroupsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/sign-in?redirect=/groups')
 
-  const groups = await getUserGroups(user.id)
+  const [groups, profileRes] = await Promise.all([
+    getUserGroups(user.id),
+    supabase.from('profiles').select('display_name').eq('id', user.id).single(),
+  ])
+
+  const displayName = profileRes.data?.display_name ?? null
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', padding: '32px 24px 100px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
         <h1 style={{ fontSize: 32 }}>Groups</h1>
-        <CreateGroupModal userId={user.id} />
+        <CreateGroupModal userId={user.id} userDisplayName={displayName} />
       </div>
       <p style={{ fontSize: 14, color: 'var(--ink3)', marginBottom: 32 }}>
         Create a group, add events, and vote on what to attend together.
@@ -33,7 +38,7 @@ export default async function GroupsPage() {
           background: 'var(--stone)', border: '1px dashed var(--border)',
           borderRadius: 16, padding: '48px 24px', textAlign: 'center',
         }}>
-          <div style={{ fontSize: 14, color: 'var(--ink3)', marginBottom: 16 }}>
+          <div style={{ fontSize: 14, color: 'var(--ink3)', marginBottom: 8 }}>
             You&apos;re not in any groups yet.
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink4)' }}>
