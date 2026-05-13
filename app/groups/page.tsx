@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getUserGroups } from '@/lib/queries'
 import { CreateGroupModal } from './CreateGroupModal'
+import { GroupAvatar } from '@/components/groups/GroupAvatar'
 
 export const metadata: Metadata = {
   title: 'Groups — Event Radar',
@@ -77,27 +77,3 @@ export default async function GroupsPage() {
   )
 }
 
-export function GroupAvatar({ name, imageUrl, size = 40 }: { name: string; imageUrl: string | null; size?: number }) {
-  const initials = name
-    .split(' ')
-    .map(w => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-
-  return (
-    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--green-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {imageUrl ? (
-        <Image
-          src={imageUrl}
-          alt={name}
-          width={size}
-          height={size}
-          style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-        />
-      ) : (
-        <span style={{ fontSize: size * 0.35, fontWeight: 600, color: 'var(--green)' }}>{initials}</span>
-      )}
-    </div>
-  )
-}
