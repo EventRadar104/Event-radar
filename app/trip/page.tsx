@@ -17,6 +17,34 @@ const CATEGORIES = [
 
 type DateMode = 'single' | 'range' | 'weekend'
 
+interface VenueGroup {
+  key: string
+  lat: number
+  lng: number
+  name: string
+  events: EventWithDetails[]
+}
+
+interface CityDot {
+  name: string
+  lat: number
+  lng: number
+  count: number
+}
+
+function buildVenueGroups(events: EventWithDetails[]): VenueGroup[] {
+  const map = new Map<string, VenueGroup>()
+  for (const e of events) {
+    if (e.venue_lat == null || e.venue_lng == null) continue
+    const key = `${e.venue_lat},${e.venue_lng}`
+    if (!map.has(key)) {
+      map.set(key, { key, lat: e.venue_lat, lng: e.venue_lng, name: e.venue_name ?? e.venue_city ?? 'Venue', events: [] })
+    }
+    map.get(key)!.events.push(e)
+  }
+  return Array.from(map.values())
+}
+
 function getWeekendDates(): { sat: Date; sun: Date } {
   const now = new Date()
   const day = now.getDay()
@@ -24,7 +52,6 @@ function getWeekendDates(): { sat: Date; sun: Date } {
   if (day === 6) {
     // today is Saturday
   } else if (day === 0) {
-    // Sunday — jump to next weekend
     sat.setDate(now.getDate() + 6)
   } else {
     sat.setDate(now.getDate() + (6 - day))
@@ -72,6 +99,22 @@ function fmtDate(e: EventWithDetails): string {
   })
 }
 
+function buildEventOverlayDiv(event: EventWithDetails, zoom: number): HTMLDivElement {
+  const div = document.createElement('div')
+  div.style.cssText = 'position:absolute;cursor:pointer;transform:translate(-50%,-50%)'
+  if (zoom >= 10 && event.cover_image_url) {
+    const img = document.createElement('img')
+    img.src = event.cover_image_url
+    img.style.cssText = 'width:48px;height:48px;border-radius:10px;object-fit:cover;border:2.5px solid white;box-shadow:0 3px 10px rgba(0,0,0,.35);display:block'
+    div.appendChild(img)
+  } else {
+    const circle = document.createElement('div')
+    circle.style.cssText = `width:20px;height:20px;border-radius:50%;background:${categoryColor(event)};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)`
+    div.appendChild(circle)
+  }
+  return div
+}
+
 export default function TripPage() {
   const router = useRouter()
   const mapDivRef = useRef<HTMLDivElement>(null)
@@ -83,9 +126,18 @@ export default function TripPage() {
   const geocoderRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const zoomListenerRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const boundsListenerRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapClickListenerRef = useRef<any>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const filtersRef = useRef({ city: '', fromDate: '', toDate: '', category: '', dateMode: 'single' as DateMode })
 
   const [mapsLoaded, setMapsLoaded] = useState(false)
   const [events, setEvents] = useState<EventWithDetails[]>([])
+  const [cityDots, setCityDots] = useState<CityDot[]>([])
+  const [activeVenueKey, setActiveVenueKey] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(5)
   const [tripEvents, setTripEvents] = useState<EventWithDetails[]>([])
   const [selectedEvent, setSelectedEvent] = useState<EventWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -105,59 +157,108 @@ export default function TripPage() {
     setTimeout(() => setToast(''), 2000)
   }
 
-  // Load initial events and shared trip from URL
+  // Keep filtersRef current so event-listener callbacks never go stale
+  useEffect(() => {
+    filtersRef.current = { city, fromDate, toDate, category, dateMode }
+  }, [city, fromDate, toDate, category, dateMode])
+
+  // fetchBoundsData reads filters from ref — safe to call from any listener
+  async function fetchBoundsData(map: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const m = map as any
+    if (!m) return
+    const z: number = m.getZoom() ?? 5
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bounds: any = m.getBounds()
+    if (!bounds) return
+
+    const f = filtersRef.current
+    const { sat, sun } = getWeekendDates()
+    const fromISO = f.dateMode === 'weekend' ? sat.toISOString()
+      : f.fromDate ? new Date(f.fromDate + 'T00:00:00').toISOString()
+      : new Date().toISOString()
+    const toISO = f.dateMode === 'weekend' ? sun.toISOString()
+      : f.dateMode === 'range' && f.toDate ? new Date(f.toDate + 'T23:59:59').toISOString()
+      : f.dateMode === 'single' && f.fromDate ? new Date(f.fromDate + 'T23:59:59').toISOString()
+      : null
+
+    setZoom(z)
+    setLoading(true)
+
+    if (z < 8) {
+      const params = new URLSearchParams({ from: fromISO })
+      if (toISO) params.set('to', toISO)
+      if (f.category) params.set('cat', f.category)
+      const res = await fetch(`/api/map/cities?${params}`)
+      const dots: CityDot[] = await res.json()
+      setCityDots(dots)
+      setEvents([])
+    } else {
+      const ne = bounds.getNorthEast()
+      const sw = bounds.getSouthWest()
+      const params = new URLSearchParams({
+        north: String(ne.lat()),
+        south: String(sw.lat()),
+        east: String(ne.lng()),
+        west: String(sw.lng()),
+        from: fromISO,
+      })
+      if (toISO) params.set('to', toISO)
+      if (f.category) params.set('cat', f.category)
+      if (f.city) params.set('city', f.city)
+      const res = await fetch(`/api/map/bounds?${params}`)
+      const data: EventWithDetails[] = await res.json()
+      setEvents(data)
+      setCityDots([])
+    }
+
+    setLoading(false)
+  }
+
+  // Always keep ref pointing to the latest version to avoid stale closures in listeners
+  const fetchBoundsDataRef = useRef(fetchBoundsData)
+  fetchBoundsDataRef.current = fetchBoundsData
+
+  // Load shared trip events + auth
   useEffect(() => {
     const supabase = createClient()
     async function init() {
       const params = new URLSearchParams(window.location.search)
       const sharedIds = params.get('events')?.split(',').filter(Boolean) ?? []
 
-      const discoverQuery = supabase
-        .from('events_with_details')
-        .select('*')
-        .eq('status', 'published')
-        .gt('starts_at', new Date().toISOString())
-        .not('venue_lat', 'is', null)
-        .not('venue_lng', 'is', null)
-        .order('starts_at', { ascending: true })
+      if (sharedIds.length > 0) {
+        const { data } = await supabase
+          .from('events_with_details')
+          .select('*')
+          .in('id', sharedIds)
+          .eq('status', 'published')
+        if (data && data.length > 0) setTripEvents(data as EventWithDetails[])
+      }
 
-      const sharedQuery =
-        sharedIds.length > 0
-          ? supabase.from('events_with_details').select('*').in('id', sharedIds).eq('status', 'published')
-          : null
-
-      const [discoverResult, sharedResult] = await Promise.all([
-        discoverQuery,
-        sharedQuery ?? Promise.resolve({ data: null }),
-      ])
-
-      const loadedEvents = (discoverResult.data ?? []) as EventWithDetails[]
-      console.log(`[TripMap] Events lastet: ${loadedEvents.length}`)
-      setEvents(loadedEvents)
-      const sharedEvents = (sharedResult.data ?? []) as EventWithDetails[]
-      if (sharedEvents.length > 0) setTripEvents(sharedEvents)
-      setLoading(false)
-
-      // Check auth and handle pending sessionStorage intent
       const { data: { user } } = await supabase.auth.getUser()
       setUserId(user?.id ?? null)
-      if (user && sharedEvents.length > 0) {
+
+      if (user && sharedIds.length > 0) {
         const intentRaw = sessionStorage.getItem('trip_intent')
         if (intentRaw) {
           try {
             const intent = JSON.parse(intentRaw)
             sessionStorage.removeItem('trip_intent')
             const tripCity = intent.city ?? ''
-            if (intent.action === 'saveTrip') {
-              await doSaveTrip(user.id, tripCity, sharedEvents)
-            } else if (intent.action === 'planWithFriends') {
-              await doPlanWithFriends(user.id, tripCity, sharedEvents)
-            }
+            const { data: evData } = await supabase
+              .from('events_with_details')
+              .select('*')
+              .in('id', sharedIds)
+              .eq('status', 'published')
+            const evs = (evData ?? []) as EventWithDetails[]
+            if (intent.action === 'saveTrip') await doSaveTrip(user.id, tripCity, evs)
+            else if (intent.action === 'planWithFriends') await doPlanWithFriends(user.id, tripCity, evs)
           } catch {}
         }
       }
     }
     init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Initialize Google Maps
@@ -179,98 +280,160 @@ export default function TripPage() {
         gestureHandling: 'greedy',
       })
       geocoderRef.current = new g.maps.Geocoder()
+
+      // Viewport-based loading: debounced refetch on every bounds change
+      boundsListenerRef.current = g.maps.event.addListener(mapRef.current, 'bounds_changed', () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(() => fetchBoundsDataRef.current(mapRef.current), 300)
+      })
+
+      // Reset venue filter when clicking the map background
+      mapClickListenerRef.current = g.maps.event.addListener(mapRef.current, 'click', () => {
+        setActiveVenueKey(null)
+      })
+
       setMapsLoaded(true)
     })
   }, [])
 
-  // Update thumbnail overlays when events change or map becomes ready
+  // Rebuild overlays whenever map data or active venue changes
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!mapRef.current || !(window as any).google) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const g = (window as any).google
-    if (!g) return
 
-    // Remove previous overlays and zoom listener
     overlaysRef.current.forEach(o => o.setMap(null))
     overlaysRef.current = []
     if (zoomListenerRef.current) g.maps.event.removeListener(zoomListenerRef.current)
 
-    const eventsWithCoords = events.filter(e => e.venue_lat != null && e.venue_lng != null)
+    const currentZoom: number = mapRef.current.getZoom() ?? 5
 
-    function buildOverlayDiv(event: EventWithDetails, zoom: number): HTMLDivElement {
-      const div = document.createElement('div')
-      div.style.position = 'absolute'
-      div.style.cursor = 'pointer'
-      div.style.transform = 'translate(-50%, -50%)'
-      if (zoom >= 10 && event.cover_image_url) {
-        const img = document.createElement('img')
-        img.src = event.cover_image_url
-        img.style.cssText = 'width:48px;height:48px;border-radius:10px;object-fit:cover;border:2.5px solid white;box-shadow:0 3px 10px rgba(0,0,0,.35);display:block'
-        div.appendChild(img)
-      } else {
-        const circle = document.createElement('div')
-        const color = categoryColor(event)
-        circle.style.cssText = `width:20px;height:20px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)`
-        div.appendChild(circle)
-      }
-      return div
-    }
-
-    eventsWithCoords.forEach(event => {
-      const position = new g.maps.LatLng(event.venue_lat, event.venue_lng)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const overlay = new (g.maps.OverlayView as any)()
-      let div: HTMLDivElement | null = null
-
-      overlay.onAdd = function (this: typeof overlay) {
-        div = buildOverlayDiv(event, mapRef.current.getZoom() ?? 5)
-        div.addEventListener('click', (e: MouseEvent) => {
-          e.stopPropagation()
-          setSelectedEvent(event)
-        })
+    if (cityDots.length > 0) {
+      // ── ZOOM < 8 : city aggregate dots ──────────────────────────────
+      cityDots.forEach(dot => {
+        const position = new g.maps.LatLng(dot.lat, dot.lng)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ;(this.getPanes() as any).overlayMouseTarget.appendChild(div)
-      }
+        const overlay = new (g.maps.OverlayView as any)()
+        let div: HTMLDivElement | null = null
 
-      overlay.draw = function (this: typeof overlay) {
-        if (!div) return
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pt = (this.getProjection() as any).fromLatLngToDivPixel(position)
-        if (pt) { div.style.left = `${pt.x}px`; div.style.top = `${pt.y}px` }
-      }
-
-      overlay.onRemove = function () {
-        div?.parentNode?.removeChild(div)
-        div = null
-      }
-
-      overlay.updateZoom = function (zoom: number) {
-        if (!div) return
-        div.innerHTML = ''
-        div.style.transform = 'translate(-50%, -50%)'
-        if (zoom >= 10 && event.cover_image_url) {
-          const img = document.createElement('img')
-          img.src = event.cover_image_url
-          img.style.cssText = 'width:48px;height:48px;border-radius:10px;object-fit:cover;border:2.5px solid white;box-shadow:0 3px 10px rgba(0,0,0,.35);display:block'
-          div.appendChild(img)
-        } else {
+        overlay.onAdd = function (this: typeof overlay) {
+          div = document.createElement('div')
+          div.style.cssText = 'position:absolute;transform:translate(-50%,-50%);pointer-events:none'
+          const size = Math.min(Math.max(22, 14 + dot.count), 52)
           const circle = document.createElement('div')
-          circle.style.cssText = `width:20px;height:20px;border-radius:50%;background:${categoryColor(event)};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)`
+          circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:#c0392b;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center`
+          const label = document.createElement('span')
+          label.style.cssText = 'color:white;font-size:10px;font-weight:700;line-height:1'
+          label.textContent = dot.count > 99 ? '99+' : String(dot.count)
+          circle.appendChild(label)
           div.appendChild(circle)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(this.getPanes() as any).overlayLayer.appendChild(div)
         }
-      }
+        overlay.draw = function (this: typeof overlay) {
+          if (!div) return
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pt = (this.getProjection() as any).fromLatLngToDivPixel(position)
+          if (pt) { div.style.left = `${pt.x}px`; div.style.top = `${pt.y}px` }
+        }
+        overlay.onRemove = function () { div?.parentNode?.removeChild(div); div = null }
 
-      overlay.setMap(mapRef.current)
-      overlaysRef.current.push(overlay)
-    })
+        overlay.setMap(mapRef.current)
+        overlaysRef.current.push(overlay)
+      })
 
-    zoomListenerRef.current = g.maps.event.addListener(mapRef.current, 'zoom_changed', () => {
-      const zoom = mapRef.current.getZoom() ?? 5
-      overlaysRef.current.forEach(o => o.updateZoom(zoom))
-    })
-  }, [events, mapsLoaded])
+    } else if (currentZoom <= 11) {
+      // ── ZOOM 8–11 : one marker per venue ────────────────────────────
+      buildVenueGroups(events).forEach(vg => {
+        const isActive = vg.key === activeVenueKey
+        const position = new g.maps.LatLng(vg.lat, vg.lng)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const overlay = new (g.maps.OverlayView as any)()
+        let div: HTMLDivElement | null = null
 
-  // Geocode city (debounced)
+        function makePill(active: boolean): HTMLDivElement {
+          const d = document.createElement('div')
+          d.style.cssText = 'position:absolute;transform:translate(-50%,-100%);cursor:pointer'
+          const pill = document.createElement('div')
+          pill.style.cssText = `background:${active ? '#2D6A4F' : '#c0392b'};color:white;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid white`
+          const name = vg.name.length > 22 ? vg.name.slice(0, 22) + '…' : vg.name
+          pill.textContent = `${name} · ${vg.events.length}`
+          d.appendChild(pill)
+          return d
+        }
+
+        overlay.onAdd = function (this: typeof overlay) {
+          div = makePill(isActive)
+          div.addEventListener('click', (e: MouseEvent) => {
+            e.stopPropagation()
+            setActiveVenueKey(vg.key)
+          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(this.getPanes() as any).overlayMouseTarget.appendChild(div)
+        }
+        overlay.draw = function (this: typeof overlay) {
+          if (!div) return
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pt = (this.getProjection() as any).fromLatLngToDivPixel(position)
+          if (pt) { div.style.left = `${pt.x}px`; div.style.top = `${pt.y}px` }
+        }
+        overlay.onRemove = function () { div?.parentNode?.removeChild(div); div = null }
+
+        overlay.setMap(mapRef.current)
+        overlaysRef.current.push(overlay)
+      })
+
+    } else {
+      // ── ZOOM > 11 : individual event markers ────────────────────────
+      events.filter(e => e.venue_lat != null && e.venue_lng != null).forEach(event => {
+        const position = new g.maps.LatLng(event.venue_lat, event.venue_lng)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const overlay = new (g.maps.OverlayView as any)()
+        let div: HTMLDivElement | null = null
+
+        overlay.onAdd = function (this: typeof overlay) {
+          div = buildEventOverlayDiv(event, mapRef.current.getZoom() ?? 5)
+          div.addEventListener('click', (e: MouseEvent) => {
+            e.stopPropagation()
+            setSelectedEvent(event)
+          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(this.getPanes() as any).overlayMouseTarget.appendChild(div)
+        }
+        overlay.draw = function (this: typeof overlay) {
+          if (!div) return
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pt = (this.getProjection() as any).fromLatLngToDivPixel(position)
+          if (pt) { div.style.left = `${pt.x}px`; div.style.top = `${pt.y}px` }
+        }
+        overlay.onRemove = function () { div?.parentNode?.removeChild(div); div = null }
+        overlay.updateZoom = function (z: number) {
+          if (!div) return
+          div.innerHTML = ''
+          if (z >= 10 && event.cover_image_url) {
+            const img = document.createElement('img')
+            img.src = event.cover_image_url
+            img.style.cssText = 'width:48px;height:48px;border-radius:10px;object-fit:cover;border:2.5px solid white;box-shadow:0 3px 10px rgba(0,0,0,.35);display:block'
+            div.appendChild(img)
+          } else {
+            const circle = document.createElement('div')
+            circle.style.cssText = `width:20px;height:20px;border-radius:50%;background:${categoryColor(event)};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)`
+            div.appendChild(circle)
+          }
+        }
+
+        overlay.setMap(mapRef.current)
+        overlaysRef.current.push(overlay)
+      })
+
+      zoomListenerRef.current = g.maps.event.addListener(mapRef.current, 'zoom_changed', () => {
+        const z = mapRef.current.getZoom() ?? 5
+        overlaysRef.current.forEach(o => o.updateZoom?.(z))
+      })
+    }
+  }, [events, mapsLoaded, cityDots, activeVenueKey])
+
+  // Geocode city input (debounced) — pans map, bounds_changed triggers data fetch
   useEffect(() => {
     if (!geocoderRef.current || !city.trim() || !mapRef.current) return
     const timer = setTimeout(() => {
@@ -285,36 +448,25 @@ export default function TripPage() {
     return () => clearTimeout(timer)
   }, [city, mapsLoaded])
 
-  async function doSearch() {
-    setLoading(true)
-    const supabase = createClient()
-    const { sat, sun } = getWeekendDates()
+  function doSearch() {
+    // Push current filter values into ref immediately (state updates are async)
+    filtersRef.current = { city, fromDate, toDate, category, dateMode }
+    setActiveVenueKey(null)
 
-    const fromISO =
-      dateMode === 'weekend' ? sat.toISOString()
-      : fromDate ? new Date(fromDate + 'T00:00:00').toISOString()
-      : new Date().toISOString()
-
-    const toISO =
-      dateMode === 'weekend' ? sun.toISOString()
-      : dateMode === 'range' && toDate ? new Date(toDate + 'T23:59:59').toISOString()
-      : dateMode === 'single' && fromDate ? new Date(fromDate + 'T23:59:59').toISOString()
-      : null
-
-    const { data } = await supabase.rpc('search_events', {
-      query_text:    null,
-      filter_city:   city || null,
-      filter_slug:   category || null,
-      from_date:     fromISO,
-      to_date:       toISO,
-      only_free:     false,
-      result_limit:  10000,
-      result_offset: 0,
-    })
-    const searchedEvents = (data ?? []) as EventWithDetails[]
-    console.log(`[TripMap] Søkeresultat: ${searchedEvents.length} events`)
-    setEvents(searchedEvents)
-    setLoading(false)
+    if (city.trim() && geocoderRef.current && mapRef.current) {
+      // Geocode → map pans → bounds_changed fires → fetchBoundsData
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      geocoderRef.current.geocode({ address: city + ', Norway' }, (results: any[], status: string) => {
+        if (status === 'OK' && results?.[0]) {
+          mapRef.current.setCenter(results[0].geometry.location)
+          mapRef.current.setZoom(12)
+        } else {
+          fetchBoundsDataRef.current(mapRef.current)
+        }
+      })
+    } else {
+      fetchBoundsDataRef.current(mapRef.current)
+    }
   }
 
   function addToTrip(event: EventWithDetails) {
@@ -389,6 +541,10 @@ export default function TripPage() {
   }
 
   const weekend = getWeekendDates()
+
+  // Derived sidebar data
+  const activeVenueGroup = activeVenueKey ? buildVenueGroups(events).find(g => g.key === activeVenueKey) ?? null : null
+  const sidebarEvents = activeVenueGroup ? activeVenueGroup.events : events
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 24px 80px' }}>
@@ -472,7 +628,7 @@ export default function TripPage() {
         ))}
       </div>
 
-      {/* Map + list */}
+      {/* Map + sidebar */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, marginBottom: 28 }}>
         <div
           ref={mapDivRef}
@@ -480,38 +636,64 @@ export default function TripPage() {
         />
 
         <div style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>Loading events...</div>
-          ) : events.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>No events found. Try a different search.</div>
-          ) : events.map(event => (
-            <div
-              key={event.id}
-              onClick={() => setSelectedEvent(event)}
-              style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
-            >
-              {event.cover_image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={event.cover_image_url}
-                  alt={event.title}
-                  style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
-                />
-              )}
-              <div style={{ padding: 14 }}>
-                <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
-                  {event.category_names?.[0] ?? ''}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, lineHeight: 1.3 }}>{event.title}</div>
+
+          {/* Active venue filter header */}
+          {activeVenueGroup && (
+            <div style={{ background: '#EAF3DE', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{activeVenueGroup.name}</div>
                 <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                  {fmtDate(event)}{event.venue_city ? ` · ${event.venue_city}` : ''}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 3, fontWeight: 500 }}>
-                  {priceText(event)}
+                  {activeVenueGroup.events.length} event{activeVenueGroup.events.length !== 1 ? 's' : ''}
                 </div>
               </div>
+              <button
+                onClick={() => setActiveVenueKey(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--ink3)', lineHeight: 1, padding: '0 2px' }}
+              >
+                ×
+              </button>
             </div>
-          ))}
+          )}
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>Loading events...</div>
+          ) : zoom < 8 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
+              Zoom in to see events in an area.
+            </div>
+          ) : sidebarEvents.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>No events found in this area.</div>
+          ) : (
+            sidebarEvents.map(event => (
+              <div
+                key={event.id}
+                onClick={() => setSelectedEvent(event)}
+                style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
+              >
+                {event.cover_image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={event.cover_image_url}
+                    alt={event.title}
+                    style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
+                  />
+                )}
+                <div style={{ padding: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
+                    {event.category_names?.[0] ?? ''}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, lineHeight: 1.3 }}>{event.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                    {fmtDate(event)}{event.venue_city ? ` · ${event.venue_city}` : ''}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 3, fontWeight: 500 }}>
+                    {priceText(event)}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -588,70 +770,69 @@ export default function TripPage() {
               />
             )}
             <div style={{ padding: 28 }}>
-
-            <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
-              {selectedEvent.category_names?.[0] ?? ''}
-            </div>
-            <h2 style={{ fontSize: 22, fontFamily: 'var(--font-serif)', fontWeight: 400, lineHeight: 1.2, marginBottom: 20, paddingRight: 32 }}>
-              {selectedEvent.title}
-            </h2>
-
-            <div style={{ background: 'var(--stone)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-              <div style={{ fontSize: 22, fontFamily: 'var(--font-serif)', color: selectedEvent.is_free ? 'var(--green)' : 'var(--ink)' }}>
-                {priceText(selectedEvent)}
+              <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
+                {selectedEvent.category_names?.[0] ?? ''}
               </div>
-              {selectedEvent.ticket_url && !selectedEvent.is_free && (
-                <a
-                  href={selectedEvent.ticket_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ background: 'var(--green)', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 500, textDecoration: 'none', flexShrink: 0 }}
-                >
-                  Get tickets →
-                </a>
-              )}
-            </div>
+              <h2 style={{ fontSize: 22, fontFamily: 'var(--font-serif)', fontWeight: 400, lineHeight: 1.2, marginBottom: 20, paddingRight: 32 }}>
+                {selectedEvent.title}
+              </h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              <div style={{ background: 'var(--stone)', borderRadius: 10, padding: 14 }}>
-                <div style={{ fontSize: 18, marginBottom: 6 }}>📅</div>
-                <div style={{ fontSize: 11, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2, fontWeight: 500 }}>Date & Time</div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{fmtDate(selectedEvent)}</div>
-              </div>
-              <div style={{ background: 'var(--stone)', borderRadius: 10, padding: 14 }}>
-                <div style={{ fontSize: 18, marginBottom: 6 }}>📍</div>
-                <div style={{ fontSize: 11, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2, fontWeight: 500 }}>Location</div>
-                <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
-                  {selectedEvent.venue_name ?? selectedEvent.venue_city ?? 'TBC'}
+              <div style={{ background: 'var(--stone)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                <div style={{ fontSize: 22, fontFamily: 'var(--font-serif)', color: selectedEvent.is_free ? 'var(--green)' : 'var(--ink)' }}>
+                  {priceText(selectedEvent)}
                 </div>
-                <a
-                  href={mapsUrl(selectedEvent)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontSize: 12, color: 'var(--green)', fontWeight: 500, textDecoration: 'none' }}
-                >
-                  Open in Google Maps →
-                </a>
+                {selectedEvent.ticket_url && !selectedEvent.is_free && (
+                  <a
+                    href={selectedEvent.ticket_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ background: 'var(--green)', color: '#fff', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 500, textDecoration: 'none', flexShrink: 0 }}
+                  >
+                    Get tickets →
+                  </a>
+                )}
               </div>
-            </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => shareEvent(selectedEvent)}
-                style={{ flex: 1, padding: '10px 0', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 500, background: 'var(--white)', cursor: 'pointer', color: 'var(--ink)' }}
-              >
-                ↗ Share event
-              </button>
-              <div style={{ flex: 1 }}>
-                <SaveButton eventId={selectedEvent.id} variant="inline" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                <div style={{ background: 'var(--stone)', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 18, marginBottom: 6 }}>📅</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2, fontWeight: 500 }}>Date & Time</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{fmtDate(selectedEvent)}</div>
+                </div>
+                <div style={{ background: 'var(--stone)', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 18, marginBottom: 6 }}>📍</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2, fontWeight: 500 }}>Location</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+                    {selectedEvent.venue_name ?? selectedEvent.venue_city ?? 'TBC'}
+                  </div>
+                  <a
+                    href={mapsUrl(selectedEvent)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12, color: 'var(--green)', fontWeight: 500, textDecoration: 'none' }}
+                  >
+                    Open in Google Maps →
+                  </a>
+                </div>
               </div>
-              <button
-                onClick={() => addToTrip(selectedEvent)}
-                style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 500, background: 'var(--green)', cursor: 'pointer', color: '#fff' }}
-              >
-                + Add to trip
-              </button>
-            </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => shareEvent(selectedEvent)}
+                  style={{ flex: 1, padding: '10px 0', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 500, background: 'var(--white)', cursor: 'pointer', color: 'var(--ink)' }}
+                >
+                  ↗ Share event
+                </button>
+                <div style={{ flex: 1 }}>
+                  <SaveButton eventId={selectedEvent.id} variant="inline" />
+                </div>
+                <button
+                  onClick={() => addToTrip(selectedEvent)}
+                  style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 500, background: 'var(--green)', cursor: 'pointer', color: '#fff' }}
+                >
+                  + Add to trip
+                </button>
+              </div>
             </div>
           </div>
         </div>
