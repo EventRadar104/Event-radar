@@ -7,7 +7,7 @@ import {
   getGroupEventsWithDetails,
   getGroupMembersWithProfiles,
 } from '@/lib/queries'
-import { GroupAvatar } from '../page'
+import { GroupAvatar } from '@/components/groups/GroupAvatar'
 import { GroupDetailClient } from './GroupDetailClient'
 import { CopyButton } from './CopyButton'
 
