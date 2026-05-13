@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 import { createClient } from '@/lib/supabase/client'
 import type { EventWithDetails } from '@/lib/types'
@@ -72,6 +73,7 @@ function fmtDate(e: EventWithDetails): string {
 }
 
 export default function TripPage() {
+  const router = useRouter()
   const mapDivRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
@@ -88,6 +90,9 @@ export default function TripPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
+  const [savingTrip, setSavingTrip] = useState(false)
+  const [planningWithFriends, setPlanningWithFriends] = useState(false)
 
   const [city, setCity] = useState('')
   const [fromDate, setFromDate] = useState('')
@@ -129,10 +134,28 @@ export default function TripPage() {
       const loadedEvents = (discoverResult.data ?? []) as EventWithDetails[]
       console.log(`[TripMap] Events lastet: ${loadedEvents.length}`)
       setEvents(loadedEvents)
-      if (sharedResult.data && sharedResult.data.length > 0) {
-        setTripEvents(sharedResult.data as EventWithDetails[])
-      }
+      const sharedEvents = (sharedResult.data ?? []) as EventWithDetails[]
+      if (sharedEvents.length > 0) setTripEvents(sharedEvents)
       setLoading(false)
+
+      // Check auth and handle pending sessionStorage intent
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserId(user?.id ?? null)
+      if (user && sharedEvents.length > 0) {
+        const intentRaw = sessionStorage.getItem('trip_intent')
+        if (intentRaw) {
+          try {
+            const intent = JSON.parse(intentRaw)
+            sessionStorage.removeItem('trip_intent')
+            const tripCity = intent.city ?? ''
+            if (intent.action === 'saveTrip') {
+              await doSaveTrip(user.id, tripCity, sharedEvents)
+            } else if (intent.action === 'planWithFriends') {
+              await doPlanWithFriends(user.id, tripCity, sharedEvents)
+            }
+          } catch {}
+        }
+      }
     }
     init()
   }, [])
@@ -316,6 +339,55 @@ export default function TripPage() {
     showToast('Trip link copied!')
   }
 
+  async function doSaveTrip(uid: string, tripCity: string, eventsToSave: EventWithDetails[]) {
+    const supabase = createClient()
+    const resolvedCity = tripCity || eventsToSave[0]?.venue_city || null
+    const { error } = await supabase.from('saved_trips').insert({
+      user_id: uid,
+      city: resolvedCity,
+      events: eventsToSave.map(e => ({ id: e.id, title: e.title, starts_at: e.starts_at, venue_city: e.venue_city ?? null })),
+    })
+    if (error) showToast('Could not save trip')
+    else showToast('Trip saved!')
+  }
+
+  async function doPlanWithFriends(uid: string, tripCity: string, eventsToSave: EventWithDetails[]) {
+    const supabase = createClient()
+    const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', uid).single()
+    const groupName = tripCity ? `Trip to ${tripCity}` : `Trip · ${eventsToSave.length} events`
+    const { data: group, error: groupErr } = await supabase
+      .from('groups')
+      .insert({ name: groupName, creator_id: uid, creator_name: profile?.display_name ?? 'Unknown' })
+      .select('id')
+      .single()
+    if (groupErr || !group) { showToast('Could not create group'); return }
+    await supabase.from('group_members').insert({ group_id: group.id, user_id: uid })
+    for (const event of eventsToSave) {
+      await supabase.from('group_events').insert({ group_id: group.id, event_id: event.id, added_by: uid })
+    }
+    router.push(`/groups/${group.id}`)
+  }
+
+  function handleSaveTrip() {
+    if (!userId) {
+      sessionStorage.setItem('trip_intent', JSON.stringify({ action: 'saveTrip', city }))
+      window.location.href = `/sign-in?redirect=${encodeURIComponent('/trip?events=' + tripEvents.map(e => e.id).join(','))}`
+      return
+    }
+    setSavingTrip(true)
+    doSaveTrip(userId, city, tripEvents).finally(() => setSavingTrip(false))
+  }
+
+  function handlePlanWithFriends() {
+    if (!userId) {
+      sessionStorage.setItem('trip_intent', JSON.stringify({ action: 'planWithFriends', city }))
+      window.location.href = `/sign-in?redirect=${encodeURIComponent('/trip?events=' + tripEvents.map(e => e.id).join(','))}`
+      return
+    }
+    setPlanningWithFriends(true)
+    doPlanWithFriends(userId, city, tripEvents).finally(() => setPlanningWithFriends(false))
+  }
+
   const weekend = getWeekendDates()
 
   return (
@@ -450,12 +522,28 @@ export default function TripPage() {
             <h2 style={{ fontSize: 18, fontFamily: 'var(--font-serif)', fontWeight: 400 }}>
               Your trip · {tripEvents.length} {tripEvents.length === 1 ? 'event' : 'events'}
             </h2>
-            <button
-              onClick={shareTrip}
-              style={{ background: 'var(--green)', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-            >
-              Share this trip
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={handleSaveTrip}
+                disabled={savingTrip}
+                style={{ background: 'none', color: 'var(--ink)', border: '1.5px solid var(--border)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: savingTrip ? 'default' : 'pointer', opacity: savingTrip ? 0.6 : 1 }}
+              >
+                {savingTrip ? 'Saving…' : '♡ Save trip'}
+              </button>
+              <button
+                onClick={handlePlanWithFriends}
+                disabled={planningWithFriends}
+                style={{ background: 'none', color: 'var(--ink)', border: '1.5px solid var(--border)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: planningWithFriends ? 'default' : 'pointer', opacity: planningWithFriends ? 0.6 : 1 }}
+              >
+                {planningWithFriends ? 'Creating…' : '👥 Plan with friends'}
+              </button>
+              <button
+                onClick={shareTrip}
+                style={{ background: 'var(--green)', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+              >
+                Share this trip
+              </button>
+            </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tripEvents.map(event => (
