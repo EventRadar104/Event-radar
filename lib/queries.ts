@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import type {
   EventWithDetails,
-  GroupEventRow,
+  GroupEventWithDetails,
+  GroupMemberWithProfile,
+  GroupWithCounts,
   OrganizerEventStat,
   SearchParams,
-  VoteSummary,
 } from '@/lib/types'
 
 // ─────────────────────────────────────────
@@ -82,38 +83,178 @@ export async function getUserEventState(eventId: string) {
 // GROUPS
 // ─────────────────────────────────────────
 
-export async function getGroupByInviteCode(code: string) {
+export async function getUserGroups(userId: string): Promise<GroupWithCounts[]> {
   try {
     const supabase = await createClient()
-    const { data, error } = await supabase.rpc('get_group_by_invite_code', { p_code: code })
-    if (error || !data || data.length === 0) return null
-    const first = data[0] as GroupEventRow
-    const group = {
-      id: first.group_id,
-      name: first.group_name,
-      scope_city: first.scope_city,
-      scope_date: first.scope_date,
-      scope_cat: first.scope_cat,
-      member_count: first.member_count,
-    }
-    const groupEvents = (data as GroupEventRow[]).filter(r => r.event_id !== null)
-    return { group, groupEvents }
+
+    const { data: memberships } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', userId)
+
+    const groupIds = (memberships ?? []).map(m => m.group_id)
+    if (groupIds.length === 0) return []
+
+    const [groupsRes, membersRes, eventsRes] = await Promise.all([
+      supabase.from('groups').select('*').in('id', groupIds).order('created_at', { ascending: false }),
+      supabase.from('group_members').select('group_id').in('group_id', groupIds),
+      supabase.from('group_events').select('group_id').in('group_id', groupIds),
+    ])
+
+    const memberCountMap: Record<string, number> = {}
+    const eventCountMap: Record<string, number> = {}
+    for (const m of membersRes.data ?? []) memberCountMap[m.group_id] = (memberCountMap[m.group_id] ?? 0) + 1
+    for (const e of eventsRes.data ?? []) eventCountMap[e.group_id] = (eventCountMap[e.group_id] ?? 0) + 1
+
+    return (groupsRes.data ?? []).map(g => ({
+      ...g,
+      member_count: memberCountMap[g.id] ?? 0,
+      event_count: eventCountMap[g.id] ?? 0,
+    })) as GroupWithCounts[]
   } catch (e) {
-    console.error('getGroupByInviteCode exception:', e)
+    console.error('getUserGroups exception:', e)
+    return []
+  }
+}
+
+export async function getGroupById(id: string) {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('id', id)
+      .single()
+    if (error) return null
+    return data as import('./types').Group
+  } catch { return null }
+}
+
+/** Used by the public /join page — reads groups by invite_code without requiring membership */
+export async function getGroupPublicInfo(inviteCode: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data: group, error } = await supabase
+      .from('groups')
+      .select('id, name, cover_image_url')
+      .eq('invite_code', inviteCode)
+      .single()
+
+    if (error || !group) return null
+
+    const { count } = await supabase
+      .from('group_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('group_id', group.id)
+
+    return {
+      id: group.id as string,
+      name: group.name as string,
+      cover_image_url: group.cover_image_url as string | null,
+      member_count: count ?? 0,
+    }
+  } catch (e) {
+    console.error('getGroupPublicInfo exception:', e)
     return null
   }
 }
 
-export async function getGroupVoteSummary(groupId: string) {
+export async function getGroupEventsWithDetails(groupId: string, userId: string): Promise<GroupEventWithDetails[]> {
   try {
     const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('group_event_vote_summary')
-      .select('*')
+
+    const { data: groupEvents } = await supabase
+      .from('group_events')
+      .select('id, group_id, event_id, added_by, added_at')
       .eq('group_id', groupId)
-    if (error) return []
-    return (data ?? []) as VoteSummary[]
-  } catch { return [] }
+
+    if (!groupEvents || groupEvents.length === 0) return []
+
+    const groupEventIds = groupEvents.map(ge => ge.id)
+    const eventIds = groupEvents.map(ge => ge.event_id)
+
+    const [votesRes, eventDetailsRes] = await Promise.all([
+      supabase
+        .from('group_votes')
+        .select('group_event_id, voter_id, direction')
+        .in('group_event_id', groupEventIds),
+      supabase
+        .from('events_with_details')
+        .select('id, title, slug, starts_at, cover_image_url, venue_name, venue_city')
+        .in('id', eventIds),
+    ])
+
+    const eventMap: Record<string, { title: string; slug: string | null; starts_at: string; cover_image_url: string | null; venue_name: string | null; venue_city: string | null }> = {}
+    for (const e of eventDetailsRes.data ?? []) eventMap[e.id] = e
+
+    const voteMap: Record<string, { up: number; down: number; myVote: 'up' | 'down' | null }> = {}
+    for (const v of votesRes.data ?? []) {
+      if (!voteMap[v.group_event_id]) voteMap[v.group_event_id] = { up: 0, down: 0, myVote: null }
+      if (v.direction === 'up') voteMap[v.group_event_id].up++
+      if (v.direction === 'down') voteMap[v.group_event_id].down++
+      if (v.voter_id === userId) voteMap[v.group_event_id].myVote = v.direction as 'up' | 'down'
+    }
+
+    return groupEvents.map(ge => {
+      const ev = eventMap[ge.event_id]
+      const votes = voteMap[ge.id] ?? { up: 0, down: 0, myVote: null }
+      return {
+        group_event_id: ge.id,
+        group_id: ge.group_id,
+        event_id: ge.event_id,
+        added_by: ge.added_by,
+        added_at: ge.added_at,
+        event_title: ev?.title ?? '',
+        event_slug: ev?.slug ?? null,
+        event_starts_at: ev?.starts_at ?? '',
+        event_cover_image_url: ev?.cover_image_url ?? null,
+        venue_name: ev?.venue_name ?? null,
+        venue_city: ev?.venue_city ?? null,
+        votes_up: votes.up,
+        votes_down: votes.down,
+        net_score: votes.up - votes.down,
+        my_vote: votes.myVote,
+      }
+    }).sort((a, b) => b.net_score - a.net_score)
+  } catch (e) {
+    console.error('getGroupEventsWithDetails exception:', e)
+    return []
+  }
+}
+
+export async function getGroupMembersWithProfiles(groupId: string): Promise<GroupMemberWithProfile[]> {
+  try {
+    const supabase = await createClient()
+    const { data: members } = await supabase
+      .from('group_members')
+      .select('id, group_id, user_id, guest_name, joined_at')
+      .eq('group_id', groupId)
+      .order('joined_at', { ascending: true })
+
+    if (!members || members.length === 0) return []
+
+    const userIds = members.map(m => m.user_id).filter(Boolean) as string[]
+    const { data: profiles } = userIds.length
+      ? await supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds)
+      : { data: [] }
+
+    const profileMap: Record<string, { display_name: string | null; avatar_url: string | null }> = {}
+    for (const p of profiles ?? []) profileMap[p.id] = { display_name: p.display_name, avatar_url: p.avatar_url }
+
+    return members.map(m => ({
+      id: m.id,
+      group_id: m.group_id,
+      user_id: m.user_id,
+      guest_name: m.guest_name,
+      joined_at: m.joined_at,
+      display_name: m.user_id ? (profileMap[m.user_id]?.display_name ?? null) : m.guest_name,
+      avatar_url: m.user_id ? (profileMap[m.user_id]?.avatar_url ?? null) : null,
+    }))
+  } catch (e) {
+    console.error('getGroupMembersWithProfiles exception:', e)
+    return []
+  }
 }
 
 // ─────────────────────────────────────────

@@ -1,6 +1,6 @@
 'use client'
 
-export function ShareButton({ icon, label }: { icon: string; label: string }) {
+export function ShareButton({ icon, label, style: extraStyle }: { icon: string; label: string; style?: React.CSSProperties }) {
   return (
     <button
       style={{
@@ -14,6 +14,7 @@ export function ShareButton({ icon, label }: { icon: string; label: string }) {
         cursor: 'pointer',
         background: 'none',
         transition: 'all .15s',
+        ...extraStyle,
       }}
       onClick={() => {
         if (typeof navigator !== 'undefined' && navigator.share) {

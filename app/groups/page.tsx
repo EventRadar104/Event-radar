@@ -1,81 +1,103 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { CreateGroupForm } from './CreateGroupForm'
+import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { getUserGroups } from '@/lib/queries'
+import { CreateGroupModal } from './CreateGroupModal'
 
-export const metadata = {
-  title: 'Group Planner — Event Radar',
-  description: 'Create a group, add events, and let everyone vote. No account needed for friends.',
+export const metadata: Metadata = {
+  title: 'Groups — Event Radar',
+  description: 'Create a group, add events, and let everyone vote on what to attend.',
 }
 
 export default async function GroupsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/sign-in?redirect=/groups')
 
-  // Load the user's existing groups if logged in
-  let myGroups: { id: string; name: string; invite_code: string; created_at: string }[] = []
-  if (user) {
-    const { data } = await supabase
-      .from('groups')
-      .select('id, name, invite_code, created_at')
-      .eq('creator_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10)
-    myGroups = data ?? []
-  }
+  const [groups, profileRes] = await Promise.all([
+    getUserGroups(user.id),
+    supabase.from('profiles').select('display_name').eq('id', user.id).single(),
+  ])
+
+  const displayName = profileRes.data?.display_name ?? null
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', padding: '32px 24px 100px' }}>
-
-      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:8 }}>
-        <h1 style={{ fontSize: 32 }}>Group planner</h1>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+        <h1 style={{ fontSize: 32 }}>Groups</h1>
+        <CreateGroupModal userId={user.id} userDisplayName={displayName} />
       </div>
-      <p style={{ fontSize:14, color:'var(--ink3)', marginBottom:32 }}>
-        Create a group, set a scope, add events and let everyone vote — no account needed for friends.
+      <p style={{ fontSize: 14, color: 'var(--ink3)', marginBottom: 32 }}>
+        Create a group, add events, and vote on what to attend together.
       </p>
 
-      {/* Existing groups */}
-      {myGroups.length > 0 && (
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize:12, fontWeight:600, color:'var(--ink3)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:12 }}>
-            Your groups
+      {groups.length === 0 ? (
+        <div style={{
+          background: 'var(--stone)', border: '1px dashed var(--border)',
+          borderRadius: 16, padding: '48px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 14, color: 'var(--ink3)', marginBottom: 8 }}>
+            You&apos;re not in any groups yet.
           </div>
-          {myGroups.map(g => (
+          <div style={{ fontSize: 13, color: 'var(--ink4)' }}>
+            Create a group or ask a friend to share their invite link.
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {groups.map(g => (
             <Link
               key={g.id}
-              href={`/groups/${g.invite_code}`}
+              href={`/groups/${g.id}`}
               style={{
-                display: 'flex', alignItems: 'center', gap: 12,
+                display: 'flex', alignItems: 'center', gap: 14,
                 padding: 16, background: 'var(--white)',
-                border: '1px solid var(--border)', borderRadius: 12,
-                marginBottom: 10, textDecoration: 'none', color: 'inherit',
-                transition: 'border-color .15s',
+                border: '1px solid var(--border)', borderRadius: 14,
+                textDecoration: 'none', color: 'inherit',
               }}
             >
-              <div style={{ width:40, height:40, borderRadius:10, background:'var(--green-lt)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>
-                👥
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize:14, fontWeight:500, marginBottom:2 }}>{g.name}</div>
-                <div style={{ fontSize:12, color:'var(--ink3)' }}>
-                  eventrada.no/groups/{g.invite_code}
+              <GroupAvatar name={g.name} imageUrl={g.cover_image_url} size={48} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {g.name}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                  {g.member_count} member{g.member_count !== 1 ? 's' : ''}
+                  {g.event_count > 0 ? ` · ${g.event_count} event${g.event_count !== 1 ? 's' : ''}` : ''}
                 </div>
               </div>
-              <div style={{ fontSize:12, color:'var(--ink3)' }}>→</div>
+              <div style={{ fontSize: 13, color: 'var(--ink4)', flexShrink: 0 }}>→</div>
             </Link>
           ))}
         </div>
       )}
+    </div>
+  )
+}
 
-      {/* Create new group form (client component — handles server action) */}
-      <CreateGroupForm userId={user?.id ?? null} />
+export function GroupAvatar({ name, imageUrl, size = 40 }: { name: string; imageUrl: string | null; size?: number }) {
+  const initials = name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
 
-      <div style={{ textAlign:'center', padding:'16px 0', color:'var(--ink3)', fontSize:13 }}>
-        Got a group link?{' '}
-        <span style={{ color:'var(--ink)', fontWeight:500 }}>
-          Just open it in your browser to join.
-        </span>
-      </div>
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--green-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {imageUrl ? (
+        <Image
+          src={imageUrl}
+          alt={name}
+          width={size}
+          height={size}
+          style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+        />
+      ) : (
+        <span style={{ fontSize: size * 0.35, fontWeight: 600, color: 'var(--green)' }}>{initials}</span>
+      )}
     </div>
   )
 }
