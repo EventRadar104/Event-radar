@@ -9,7 +9,9 @@ import {
 } from '@/lib/queries'
 import { GroupAvatar } from '@/components/groups/GroupAvatar'
 import { GroupDetailClient } from './GroupDetailClient'
+import { GroupNameEditor } from './GroupNameEditor'
 import { CopyButton } from './CopyButton'
+import { BackButton } from '@/components/BackButton'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -47,18 +49,16 @@ export default async function GroupDetailPage({ params }: PageProps) {
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', padding: '32px 24px 100px' }}>
-      <Link
-        href="/groups"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink3)', marginBottom: 28, textDecoration: 'none' }}
-      >
-        ← Groups
-      </Link>
+      <BackButton
+        label="← Groups"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink3)', marginBottom: 28 }}
+      />
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
         <GroupAvatar name={group.name} imageUrl={group.cover_image_url} size={64} />
         <div>
-          <h1 style={{ fontSize: 28, marginBottom: 4 }}>{group.name}</h1>
+          <GroupNameEditor groupId={group.id} initialName={group.name} isAdmin={isAdmin} />
           <div style={{ fontSize: 13, color: 'var(--ink3)' }}>
             {members.length} member{members.length !== 1 ? 's' : ''}
           </div>

@@ -18,6 +18,8 @@ interface SavedTrip {
 export default function SavedPage() {
   const [events, setEvents] = useState<EventWithDetails[] | null>(null)
   const [trips, setTrips] = useState<SavedTrip[] | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     let ids: string[] = []
@@ -46,6 +48,15 @@ export default function SavedPage() {
         .then(({ data }) => setTrips((data ?? []) as SavedTrip[]))
     })
   }, [])
+
+  async function handleDeleteTrip(id: string) {
+    setDeletingId(id)
+    const supabase = createClient()
+    await supabase.from('saved_trips').delete().eq('id', id)
+    setTrips(prev => prev?.filter(t => t.id !== id) ?? null)
+    setDeleteConfirmId(null)
+    setDeletingId(null)
+  }
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px 100px' }}>
@@ -90,29 +101,59 @@ export default function SavedPage() {
                 : null
               const label = trip.city ?? trip.events?.[0]?.venue_city ?? 'Trip'
               const ids = Array.isArray(trip.events) ? trip.events.map((e: { id: string }) => e.id).join(',') : ''
-              return (
-                <Link
-                  key={trip.id}
-                  href={`/trip?events=${ids}`}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 16,
-                    padding: '16px 20px', background: 'var(--white)',
-                    border: '1px solid var(--border)', borderRadius: 14,
-                    textDecoration: 'none', color: 'inherit',
-                  }}
-                >
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--green-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                    🗺️
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 3 }}>{label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                      {eventCount} event{eventCount !== 1 ? 's' : ''}
-                      {firstDate ? ` · from ${firstDate}` : ''}
+
+              if (deleteConfirmId === trip.id) {
+                return (
+                  <div key={trip.id} style={{ background: '#fff5f5', border: '1px solid #fca5a5', borderRadius: 14, padding: 20 }}>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: '#c0392b', marginBottom: 6 }}>Delete &ldquo;{label}&rdquo;?</p>
+                    <p style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 14 }}>This cannot be undone.</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => setDeleteConfirmId(null)}
+                        style={{ flex: 1, padding: '9px 0', border: '1.5px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 500, background: 'none', cursor: 'pointer' }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTrip(trip.id)}
+                        disabled={deletingId === trip.id}
+                        style={{ flex: 1, padding: '9px 0', background: deletingId === trip.id ? 'var(--border)' : '#c0392b', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: deletingId === trip.id ? 'default' : 'pointer' }}
+                      >
+                        {deletingId === trip.id ? 'Deleting…' : 'Yes, delete'}
+                      </button>
                     </div>
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--ink4)', flexShrink: 0 }}>→</div>
-                </Link>
+                )
+              }
+
+              return (
+                <div
+                  key={trip.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 14 }}
+                >
+                  <Link
+                    href={`/trip?events=${ids}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--green-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                      🗺️
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 3 }}>{label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                        {eventCount} event{eventCount !== 1 ? 's' : ''}
+                        {firstDate ? ` · from ${firstDate}` : ''}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--ink4)', flexShrink: 0 }}>→</div>
+                  </Link>
+                  <button
+                    onClick={() => setDeleteConfirmId(trip.id)}
+                    style={{ background: 'none', border: '1px solid #fca5a5', borderRadius: 8, padding: '5px 11px', fontSize: 12, color: '#c0392b', cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    Delete
+                  </button>
+                </div>
               )
             })}
           </div>

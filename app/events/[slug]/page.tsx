@@ -9,6 +9,7 @@ import { SaveButton } from '@/components/SaveButton'
 import { ShareButton } from '@/components/ShareButton'
 import { AddToGroupButton } from '@/components/AddToGroupModal'
 import { RsvpButton } from '@/components/RsvpButton'
+import { BackButton } from '@/components/BackButton'
 import ViewTracker from './ViewTracker'
 
 interface PageProps {
@@ -121,9 +122,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             <div style={{ fontSize:18, fontWeight:500, color:'rgba(255,255,255,.7)', maxWidth:500, lineHeight:1.3 }}>{event.title}</div>
           </div>
         )}
-        <Link href="/" style={{ position:'absolute', top:16, left:16, zIndex:10, background:'rgba(255,255,255,.92)', backdropFilter:'blur(8px)', border:'none', borderRadius:40, padding:'8px 14px', fontSize:13, fontWeight:500, textDecoration:'none', color:'var(--ink)', display:'flex', alignItems:'center', gap:6 }}>
-          ← Back
-        </Link>
+        <BackButton label="← Back" style={{ position:'absolute', top:16, left:16, zIndex:10, background:'rgba(255,255,255,.92)', backdropFilter:'blur(8px)', borderRadius:40, padding:'8px 14px', fontSize:13, fontWeight:500, color:'var(--ink)', display:'flex', alignItems:'center', gap:6 }} />
         <SaveButton eventId={event.id} initialSaved={userState.isFavorite} variant="detail" />
       </div>
 
