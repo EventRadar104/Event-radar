@@ -173,6 +173,24 @@ async function main() {
   }
 
   console.log(`Done — ${total} events upserted.`)
+
+  const { count: freeCount } = await supabase
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_free', true)
+    .eq('source', 'scraped');
+
+  const { count: totalCount } = await supabase
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .eq('source', 'scraped');
+
+  const freePct = Math.round((freeCount / totalCount) * 100);
+  if (freePct > 15) {
+    console.warn(`⚠️ ADVARSEL: ${freePct}% av events er markert gratis (${freeCount}/${totalCount}). Sjekk is_free-logikken.`);
+  } else {
+    console.log(`✓ Sanity check OK: ${freePct}% gratis events`);
+  }
 }
 
 main().catch(err => {
