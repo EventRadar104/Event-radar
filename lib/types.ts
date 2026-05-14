@@ -170,6 +170,8 @@ export interface EventWithDetails extends Event {
   organizer_avatar: string | null
   category_slugs: string[] | null
   category_names: string[] | null
+  views_total: number
+  save_count: number
 }
 
 /** Returned by organizer_event_stats */
