@@ -227,7 +227,7 @@ function TripBanner() {
           Plan a trip
         </h2>
         <p style={{ fontSize: 14, color: 'rgba(255,255,255,.7)', margin: 0, maxWidth: 420, lineHeight: 1.55 }}>
-          Browse events across Norway. Build your trip around them.
+          Find events. Make plans. Bring friends.
         </p>
       </div>
       <Link href="/trip" style={{
