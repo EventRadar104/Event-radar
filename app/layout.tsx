@@ -27,6 +27,9 @@ export const metadata: Metadata = {
     locale: 'nb_NO',
     type: 'website',
   },
+  other: {
+    'impact-site-verification': '787be7d9-82e4-4097-9fbd-af6b3a2433ca',
+  },
 }
 
 export default function RootLayout({
@@ -36,9 +39,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="nb" className={`${instrumentSerif.variable} ${inter.variable}`}>
-      <head>
-        <meta name="impact-site-verification" value="787be7d9-82e4-4097-9fbd-af6b3a2433ca" />
-      </head>
       <body>
         <Nav />
         <main>{children}</main>
