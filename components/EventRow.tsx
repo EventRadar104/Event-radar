@@ -44,7 +44,7 @@ export function EventRow({ title, events, seeAllHref }: EventRowProps) {
           style={{ display: 'flex', gap: 12, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4, scrollBehavior: 'smooth' }}
         >
           {events.map(event => (
-            <div key={event.id} style={{ minWidth: 220, flexShrink: 0 }}>
+            <div key={event.id} style={{ width: 300, flexShrink: 0 }}>
               <EventCard event={event} />
             </div>
           ))}
