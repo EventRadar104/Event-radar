@@ -96,7 +96,8 @@ export function EventCard({ event }: EventCardProps) {
             src={event.cover_image_url}
             alt={event.title}
             fill
-            sizes="220px"
+            sizes="(max-width: 768px) 100vw, 400px"
+            quality={80}
             style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
           />
         )}
