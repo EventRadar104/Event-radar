@@ -566,7 +566,7 @@ export default function TripPage() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 'clamp(24px,4vw,36px)', fontFamily: 'var(--font-serif)', fontWeight: 400, marginBottom: 4 }}>
-          Plan a trip around events
+          Plan a trip
         </h1>
         <p style={{ fontSize: 14, color: 'var(--ink3)' }}>
           Find events, build your itinerary, and share it with friends.
