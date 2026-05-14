@@ -29,7 +29,7 @@ export default async function GroupsPage() {
         <CreateGroupModal userId={user.id} userDisplayName={displayName} />
       </div>
       <p style={{ fontSize: 14, color: 'var(--ink3)', marginBottom: 32 }}>
-        Create a group, add events, and vote on what to attend together.
+        Add events to a group, share with friends, and vote — no more endless group chats.
       </p>
 
       <GroupListClient groups={groups} userId={user.id} />

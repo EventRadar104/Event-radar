@@ -27,7 +27,7 @@ export function DiscoverSection({ initialEvents, initialHasMore }: Props) {
 
   return (
     <div style={{ marginTop: 8 }}>
-      <h2 style={{ fontSize: 22, fontFamily: 'var(--font-serif)', fontWeight: 400, display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
+      <h2 style={{ fontSize: 26, fontFamily: 'var(--font-serif)', fontWeight: 400, display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
         <div style={{ width: 3, height: 22, background: '#2D6A4F', borderRadius: 2, flexShrink: 0 }} />
         Discover
       </h2>

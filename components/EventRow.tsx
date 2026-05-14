@@ -24,7 +24,7 @@ export function EventRow({ title, events, seeAllHref }: EventRowProps) {
   return (
     <div style={{ marginBottom: 36 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h2 style={{ fontSize: 22, fontFamily: 'var(--font-serif)', fontWeight: 400, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <h2 style={{ fontSize: 26, fontFamily: 'var(--font-serif)', fontWeight: 400, display: 'flex', alignItems: 'baseline', gap: 10 }}>
             <div style={{ width: 3, height: 22, background: '#2D6A4F', borderRadius: 2, flexShrink: 0 }} />
             {title}
           </h2>

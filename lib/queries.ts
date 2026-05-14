@@ -387,17 +387,19 @@ export async function getTrendingEvent() {
     const rankedIds = stats
       .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
       .map(s => s.event_id)
+    const { data: candidates } = await supabase
+      .from('events_with_details')
+      .select('*')
+      .in('id', rankedIds)
+      .eq('status', 'published')
+      .gt('starts_at', new Date().toISOString())
+      .not('cover_image_url', 'is', null)
+      .eq('hide_from_featured', false)
+
+    if (!candidates || candidates.length === 0) return null
+    const byId = Object.fromEntries(candidates.map((e: EventWithDetails) => [e.id, e]))
     for (const id of rankedIds) {
-      const { data } = await supabase
-        .from('events_with_details')
-        .select('*')
-        .eq('id', id)
-        .eq('status', 'published')
-        .gt('starts_at', new Date().toISOString())
-        .not('cover_image_url', 'is', null)
-        .eq('hide_from_featured', false)
-        .maybeSingle()
-      if (data) return data as EventWithDetails
+      if (byId[id]) return byId[id] as EventWithDetails
     }
     return null
   } catch {

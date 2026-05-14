@@ -138,7 +138,7 @@ export default async function EventDetailPage({ params }: PageProps) {
 
         <div style={{ background:'var(--white)', border:'1.5px solid var(--border)', borderRadius:16, padding:24, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, marginBottom:24 }}>
           <div>
-            <div style={{ fontSize:28, fontFamily:'var(--font-serif)', color: price.free ? 'var(--green)' : 'var(--ink)' }}>{price.text}</div>
+            <div style={{ fontSize:28, fontFamily:'var(--font-sans)', color: price.free ? 'var(--green)' : 'var(--ink)' }}>{price.text}</div>
             <div style={{ fontSize:13, color:'var(--ink3)', marginTop:2 }}>
               {event.is_free ? (event.ticket_url ? 'Free — see event page for details' : 'No tickets needed — just show up') : 'Tickets via external provider'}
             </div>
