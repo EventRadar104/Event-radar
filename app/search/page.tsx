@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { searchEvents } from '@/lib/queries'
 import { EventCard } from '@/components/EventCard'
+import { SearchInput } from '@/components/SearchInput'
 import type { SearchParams } from '@/lib/types'
 
 export const metadata: Metadata = {
@@ -48,36 +49,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 80px' }}>
 
       {/* ── Search input ──────────────────────── */}
-      <form action="/search" method="GET" style={{ marginBottom: 20 }}>
-        {params.city && <input type="hidden" name="city" value={params.city} />}
-        {params.cat  && <input type="hidden" name="cat"  value={params.cat} />}
-        {params.free === 'true' && <input type="hidden" name="free" value="true" />}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          background: 'var(--white)',
-          border: '1.5px solid var(--border)',
-          borderRadius: 40, padding: '0 6px 0 18px',
-          gap: 8, height: 50,
-          boxShadow: 'var(--shadow)',
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" style={{ flexShrink: 0 }}>
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <input
-            type="text"
-            name="q"
-            defaultValue={params.q ?? ''}
-            placeholder="Search events, artists, venues…"
-            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, color: 'var(--ink)' }}
-          />
-          <button
-            type="submit"
-            style={{ background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 30, padding: '8px 20px', fontSize: 14, fontWeight: 500, flexShrink: 0, cursor: 'pointer' }}
-          >
-            Search
-          </button>
-        </div>
-      </form>
+      <SearchInput
+        defaultValue={params.q ?? ''}
+        hiddenParams={{ city: params.city ?? '', cat: params.cat ?? '', free: params.free ?? '' }}
+      />
 
       {/* ── Filter pills ──────────────────────── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32 }}>
