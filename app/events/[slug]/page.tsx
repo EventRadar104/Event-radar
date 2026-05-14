@@ -107,24 +107,26 @@ export default async function EventDetailPage({ params }: PageProps) {
   return (
     <>
       <ViewTracker eventId={event.id} referrer="direct" />
-      <div style={{ position:'relative', height:380, overflow:'hidden' }} className={catClass}>
-        {event.cover_image_url ? (
-          <Image
-            src={event.cover_image_url}
-            alt={event.title}
-            fill
-            style={{ objectFit:'cover' }}
-            priority
-            sizes="100vw"
-            quality={90}
-          />
-        ) : (
-          <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textAlign:'center', padding:24 }}>
-            <div style={{ fontSize:18, fontWeight:500, color:'rgba(255,255,255,.7)', maxWidth:500, lineHeight:1.3 }}>{event.title}</div>
-          </div>
-        )}
-        <BackButton label="← Back" style={{ position:'absolute', top:16, left:16, zIndex:10, background:'rgba(255,255,255,.92)', backdropFilter:'blur(8px)', borderRadius:40, padding:'8px 14px', fontSize:13, fontWeight:500, color:'var(--ink)', display:'flex', alignItems:'center', gap:6 }} />
-        <SaveButton eventId={event.id} initialSaved={userState.isFavorite} variant="detail" />
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 24px 0 24px' }}>
+        <div style={{ position:'relative', height:460, borderRadius:16, overflow:'hidden' }} className={catClass}>
+          {event.cover_image_url ? (
+            <Image
+              src={event.cover_image_url}
+              alt={event.title}
+              fill
+              style={{ objectFit:'cover' }}
+              priority
+              sizes="100vw"
+              quality={90}
+            />
+          ) : (
+            <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textAlign:'center', padding:24 }}>
+              <div style={{ fontSize:18, fontWeight:500, color:'rgba(255,255,255,.7)', maxWidth:500, lineHeight:1.3 }}>{event.title}</div>
+            </div>
+          )}
+          <BackButton label="← Back" style={{ position:'absolute', top:16, left:16, zIndex:10, background:'rgba(255,255,255,.92)', backdropFilter:'blur(8px)', borderRadius:40, padding:'8px 14px', fontSize:13, fontWeight:500, color:'var(--ink)', display:'flex', alignItems:'center', gap:6 }} />
+          <SaveButton eventId={event.id} initialSaved={userState.isFavorite} variant="detail" />
+        </div>
       </div>
 
       <div style={{ maxWidth:720, margin:'0 auto', padding:'32px 24px 100px' }}>
