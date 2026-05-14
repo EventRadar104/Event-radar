@@ -364,19 +364,27 @@ export async function getPublishedEventCount(): Promise<number> {
 export async function getTrendingEvent() {
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('events_with_details')
-      .select('*')
-      .eq('status', 'published')
-      .gt('starts_at', new Date().toISOString())
-      .not('cover_image_url', 'is', null)
+    const { data: stats } = await supabase
+      .from('organizer_event_stats')
+      .select('event_id, views_total, save_count')
       .order('views_total', { ascending: false })
-      .limit(50)
-    if (!data || data.length === 0) return null
-    const sorted = (data as EventWithDetails[]).sort(
-      (a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count)
-    )
-    return sorted[0] ?? null
+      .limit(21)
+    if (!stats || stats.length === 0) return null
+    const rankedIds = stats
+      .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
+      .map(s => s.event_id)
+    for (const id of rankedIds) {
+      const { data } = await supabase
+        .from('events_with_details')
+        .select('*')
+        .eq('id', id)
+        .eq('status', 'published')
+        .gt('starts_at', new Date().toISOString())
+        .not('cover_image_url', 'is', null)
+        .maybeSingle()
+      if (data) return data as EventWithDetails
+    }
+    return null
   } catch {
     return null
   }
@@ -386,20 +394,29 @@ export async function getHotEvents(excludeId = '', limit = 10, page = 1) {
   try {
     const supabase = await createClient()
     const offset = (page - 1) * limit
-    let query = supabase
+    const { data: stats } = await supabase
+      .from('organizer_event_stats')
+      .select('event_id, views_total, save_count')
+      .order('views_total', { ascending: false })
+      .limit(21)
+    if (!stats || stats.length === 0) return []
+    const rankedIds = stats
+      .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
+      .map(s => s.event_id)
+      .filter(id => id !== excludeId)
+      .slice(offset, offset + limit)
+    if (rankedIds.length === 0) return []
+    const { data } = await supabase
       .from('events_with_details')
       .select('*')
+      .in('id', rankedIds)
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
       .not('cover_image_url', 'is', null)
-      .order('views_total', { ascending: false })
-      .limit(100)
-    if (excludeId) query = query.neq('id', excludeId)
-    const { data } = await query
     if (!data) return []
-    return (data as EventWithDetails[])
-      .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
-      .slice(offset, offset + limit)
+    return rankedIds
+      .map(id => (data as EventWithDetails[]).find(e => e.id === id))
+      .filter((e): e is EventWithDetails => e !== undefined)
   } catch {
     return []
   }
