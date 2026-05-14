@@ -185,7 +185,7 @@ export default function TripPage() {
     setZoom(z)
     setLoading(true)
 
-    if (z < 8) {
+    if (z < 10) {
       const params = new URLSearchParams({ from: fromISO })
       if (toISO) params.set('to', toISO)
       if (f.category) params.set('cat', f.category)
@@ -309,7 +309,7 @@ export default function TripPage() {
     const currentZoom: number = mapRef.current.getZoom() ?? 5
 
     if (cityDots.length > 0) {
-      // ── ZOOM < 8 : city aggregate dots ──────────────────────────────
+      // ── ZOOM < 10 : cluster circles ──────────────────────────────────
       cityDots.forEach(dot => {
         const position = new g.maps.LatLng(dot.lat, dot.lng)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -318,17 +318,21 @@ export default function TripPage() {
 
         overlay.onAdd = function (this: typeof overlay) {
           div = document.createElement('div')
-          div.style.cssText = 'position:absolute;transform:translate(-50%,-50%);pointer-events:none'
-          const size = Math.min(Math.max(22, 14 + dot.count), 52)
+          div.style.cssText = 'position:absolute;transform:translate(-50%,-50%);cursor:pointer'
           const circle = document.createElement('div')
-          circle.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:#c0392b;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center`
+          circle.style.cssText = 'width:32px;height:32px;border-radius:50%;background:#111;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3)'
           const label = document.createElement('span')
-          label.style.cssText = 'color:white;font-size:10px;font-weight:700;line-height:1'
+          label.style.cssText = 'color:white;font-size:11px;font-weight:700;line-height:1'
           label.textContent = dot.count > 99 ? '99+' : String(dot.count)
           circle.appendChild(label)
           div.appendChild(circle)
+          div.addEventListener('click', (e: MouseEvent) => {
+            e.stopPropagation()
+            mapRef.current.setZoom(11)
+            mapRef.current.setCenter(position)
+          })
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ;(this.getPanes() as any).overlayLayer.appendChild(div)
+          ;(this.getPanes() as any).overlayMouseTarget.appendChild(div)
         }
         overlay.draw = function (this: typeof overlay) {
           if (!div) return
@@ -342,10 +346,11 @@ export default function TripPage() {
         overlaysRef.current.push(overlay)
       })
 
-    } else if (currentZoom <= 11) {
-      // ── ZOOM 8–11 : one marker per venue ────────────────────────────
+    } else if (currentZoom <= 12) {
+      // ── ZOOM 10–12 : one pill per venue ──────────────────────────────
       buildVenueGroups(events).forEach(vg => {
         const isActive = vg.key === activeVenueKey
+        const isSingle = vg.events.length === 1
         const position = new g.maps.LatLng(vg.lat, vg.lng)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const overlay = new (g.maps.OverlayView as any)()
@@ -355,9 +360,14 @@ export default function TripPage() {
           const d = document.createElement('div')
           d.style.cssText = 'position:absolute;transform:translate(-50%,-100%);cursor:pointer'
           const pill = document.createElement('div')
-          pill.style.cssText = `background:${active ? '#2D6A4F' : '#c0392b'};color:white;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid white`
-          const name = vg.name.length > 22 ? vg.name.slice(0, 22) + '…' : vg.name
-          pill.textContent = `${name} · ${vg.events.length}`
+          pill.style.cssText = `background:${active ? '#f0faf4' : 'white'};color:#111;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:500;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15);border:1px solid ${active ? '#2D6A4F' : '#d1d5db'}`
+          if (isSingle) {
+            const title = vg.events[0].title
+            pill.textContent = title.length > 28 ? title.slice(0, 28) + '…' : title
+          } else {
+            const name = vg.name.length > 22 ? vg.name.slice(0, 22) + '…' : vg.name
+            pill.textContent = `${name} · ${vg.events.length}`
+          }
           d.appendChild(pill)
           return d
         }
@@ -366,7 +376,11 @@ export default function TripPage() {
           div = makePill(isActive)
           div.addEventListener('click', (e: MouseEvent) => {
             e.stopPropagation()
-            setActiveVenueKey(vg.key)
+            if (isSingle) {
+              setSelectedEvent(vg.events[0])
+            } else {
+              setActiveVenueKey(vg.key)
+            }
           })
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ;(this.getPanes() as any).overlayMouseTarget.appendChild(div)
@@ -384,7 +398,7 @@ export default function TripPage() {
       })
 
     } else {
-      // ── ZOOM > 11 : individual event markers ────────────────────────
+      // ── ZOOM > 12 : individual event markers ────────────────────────
       events.filter(e => e.venue_lat != null && e.venue_lng != null).forEach(event => {
         const position = new g.maps.LatLng(event.venue_lat, event.venue_lng)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -657,7 +671,7 @@ export default function TripPage() {
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>Loading events...</div>
-          ) : zoom < 8 ? (
+          ) : zoom < 10 ? (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
               Zoom in to see events in an area.
