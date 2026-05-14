@@ -18,11 +18,12 @@ const VIP_PATTERN = /[\s\-\u2013\u2014]*(VIP|Platinum|Premium|Package|Meet\s*&\s
 
 function getCategorySlug(classifications) {
   const seg = classifications?.[0]?.segment?.name?.toLowerCase() ?? ''
-  if (seg.includes('music')) return 'concerts-music'
+  const genre = classifications?.[0]?.genre?.name?.toLowerCase() ?? ''
+  if (seg.includes('music') || genre.includes('concert')) return 'concerts-music'
   if (seg.includes('sport')) return 'sports'
   if (seg.includes('arts') || seg.includes('theatre')) return 'culture-arts'
-  if (seg.includes('food')) return 'food-nightlife'
-  if (seg.includes('comedy')) return 'comedy'
+  if (seg.includes('family')) return 'family-kids'
+  if (seg.includes('comedy') || genre.includes('comedy')) return 'comedy'
   return 'other'
 }
 
@@ -156,10 +157,8 @@ async function main() {
         }
 
         if (saved && catId) {
-          await supabase.from('event_categories').upsert(
-            { event_id: saved.id, category_id: catId },
-            { onConflict: 'event_id,category_id', ignoreDuplicates: true }
-          )
+          await supabase.from('event_categories').delete().eq('event_id', saved.id)
+          await supabase.from('event_categories').insert({ event_id: saved.id, category_id: catId })
         }
 
         total++
