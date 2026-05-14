@@ -395,6 +395,7 @@ export async function getTrendingEvent() {
         .eq('status', 'published')
         .gt('starts_at', new Date().toISOString())
         .not('cover_image_url', 'is', null)
+        .eq('hide_from_featured', false)
         .maybeSingle()
       if (data) return data as EventWithDetails
     }
@@ -441,6 +442,7 @@ export async function getHotEvents(excludeId = '', limit = 10, page = 1) {
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
       .not('cover_image_url', 'is', null)
+      .eq('hide_from_featured', false)
     if (!data) return []
     return rankedIds
       .map(id => (data as EventWithDetails[]).find(e => e.id === id))
