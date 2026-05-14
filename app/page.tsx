@@ -152,7 +152,10 @@ export default async function HomePage({ searchParams }: PageProps) {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
               <Link href="/" style={{ fontSize: 13, color: 'var(--ink3)', textDecoration: 'none' }}>← Back</Link>
-              <h2 style={{ fontSize: 22, fontFamily: "'Instrument Serif', serif", fontWeight: 400 }}>Hot right now 🔥</h2>
+              <h2 style={{ fontSize: 22, fontFamily: 'var(--font-serif)', fontWeight: 400, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <div style={{ width: 3, height: 22, background: '#2D6A4F', borderRadius: 2, flexShrink: 0 }} />
+                Hot right now 🔥
+              </h2>
             </div>
             {hotAllEvents.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--ink3)' }}>No events found.</div>
@@ -173,7 +176,10 @@ export default async function HomePage({ searchParams }: PageProps) {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
               <Link href="/" style={{ fontSize: 13, color: 'var(--ink3)', textDecoration: 'none' }}>← Back</Link>
-              <h2 style={{ fontSize: 22, fontFamily: "'Instrument Serif', serif", fontWeight: 400 }}>This weekend</h2>
+              <h2 style={{ fontSize: 22, fontFamily: 'var(--font-serif)', fontWeight: 400, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <div style={{ width: 3, height: 22, background: '#2D6A4F', borderRadius: 2, flexShrink: 0 }} />
+                This weekend
+              </h2>
             </div>
             {weekendAllEvents.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--ink3)' }}>No events this weekend.</div>
