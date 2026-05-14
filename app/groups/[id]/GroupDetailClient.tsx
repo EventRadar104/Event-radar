@@ -218,12 +218,17 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h2 style={{ fontSize: 20 }}>Events</h2>
-          <button
-            onClick={() => setShowAddEvent(v => !v)}
-            style={{ background: 'var(--green)', color: '#fff', border: 'none', borderRadius: 40, padding: '7px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-          >
-            + Add event
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href="/" style={{ border: '1.5px solid var(--border)', borderRadius: 40, padding: '7px 16px', fontSize: 13, fontWeight: 500, color: 'var(--ink)', textDecoration: 'none' }}>
+              Browse events →
+            </Link>
+            <button
+              onClick={() => setShowAddEvent(v => !v)}
+              style={{ background: 'var(--green)', color: '#fff', border: 'none', borderRadius: 40, padding: '7px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            >
+              + Add event
+            </button>
+          </div>
         </div>
 
         {/* Search to add event */}
