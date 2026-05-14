@@ -22,6 +22,7 @@
   --shadow-md:0 2px 8px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
 
   --font-sans:  var(--font-inter, 'Inter', system-ui, sans-serif);
+  --font-serif: 'Instrument Serif', Georgia, serif;
 
   /* Category accent colours */
   --cat-music:   #7c3aed;
