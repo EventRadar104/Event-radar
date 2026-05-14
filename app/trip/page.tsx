@@ -320,7 +320,7 @@ export default function TripPage() {
           div = document.createElement('div')
           div.style.cssText = 'position:absolute;transform:translate(-50%,-50%);cursor:pointer'
           const circle = document.createElement('div')
-          circle.style.cssText = 'width:32px;height:32px;border-radius:50%;background:#111;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3)'
+          circle.style.cssText = 'width:32px;height:32px;border-radius:50%;background:#2D6A4F;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3)'
           const label = document.createElement('span')
           label.style.cssText = 'color:white;font-size:11px;font-weight:700;line-height:1'
           label.textContent = dot.count > 99 ? '99+' : String(dot.count)
