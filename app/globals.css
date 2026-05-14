@@ -7,33 +7,33 @@
 }
 
 :root {
-  --bg:       #FAFAF8;
-  --white:    #FFFFFF;
-  --ink:      #111111;
-  --ink2:     #444444;
-  --ink3:     #888888;
-  --ink4:     #BBBBBB;
-  --border:   #E8E6E1;
-  --border2:  #F0EEE9;
-  --green:    #2D6A4F;
+  --bg: #FAFAF8;
+  --white: #FFFFFF;
+  --ink: #111111;
+  --ink2: #444444;
+  --ink3: #888888;
+  --ink4: #BBBBBB;
+  --border: #E8E6E1;
+  --border2: #F0EEE9;
+  --green: #2D6A4F;
   --green-lt: #EAF2EE;
-  --stone:    #F5F3EE;
-  --shadow:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+  --stone: #F5F3EE;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
   --shadow-md:0 2px 8px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
 
-  --font-sans:  var(--font-inter, 'Inter', system-ui, sans-serif);
+  --font-sans: var(--font-inter, 'Inter', system-ui, sans-serif);
   --font-serif: 'Instrument Serif', Georgia, serif;
 
   /* Category accent colours */
-  --cat-music:   #7c3aed;
-  --cat-sports:  #1d4ed8;
-  --cat-food:    #c2410c;
-  --cat-arts:    #b45309;
+  --cat-music: #7c3aed;
+  --cat-sports: #1d4ed8;
+  --cat-food: #c2410c;
+  --cat-arts: #b45309;
   --cat-outdoor: #0f766e;
   --cat-culture: #9d174d;
-  --cat-comedy:  #be185d;
-  --cat-tech:    #0369a1;
-  --cat-other:   #374151;
+  --cat-comedy: #be185d;
+  --cat-tech: #0369a1;
+  --cat-other: #374151;
 }
 
 html {
@@ -47,12 +47,13 @@ body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden; /* Prevent horizontal scroll on all pages */
 }
 
 /* Live pulse animation for nav dot */
 @keyframes livePulse {
-  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.7); }
-  70%  { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+  0% { box-shadow: 0 0 0 0 rgba(220,38,38,.7); }
+  70% { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
   100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
 }
 
@@ -90,4 +91,63 @@ body {
   border-color: #2D6A4F;
   color: #2D6A4F !important;
   background: #EAF2EE;
+}
+
+/* ─────────────────────────────────────────────────── */
+/* Mobile styles (max-width: 640px)                   */
+/* ─────────────────────────────────────────────────── */
+
+/* Hide non-essential nav items on mobile */
+.nav-hide-mobile { display: none !important; }
+
+/* Hero search bar: stack vertically on mobile */
+.hero-form { display: flex; }
+.hero-form-col { flex: 1; }
+
+@media (min-width: 641px) {
+  /* Desktop: show all nav items */
+  .nav-hide-mobile { display: flex !important; }
+
+  /* Inline search form on desktop */
+  .hero-form { flex-direction: row; }
+  .hero-form-col {
+    border-right: 1px solid var(--border);
+    border-bottom: none !important;
+  }
+  .hero-form-col:last-of-type { border-right: none; }
+  .hero-form-btn {
+    border-radius: 0 !important;
+    padding: 0 26px !important;
+    width: auto !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Hero search: stack vertically */
+  .hero-form {
+    flex-direction: column !important;
+    border-radius: 14px !important;
+    max-width: 100% !important;
+  }
+  .hero-form-col {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 12px 16px !important;
+  }
+  .hero-form-btn {
+    border-radius: 0 0 12px 12px !important;
+    padding: 14px !important;
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  /* Tighter hero padding on mobile */
+  .hero-section {
+    padding: 32px 16px 28px !important;
+  }
+
+  /* Single column event grid on very small screens */
+  .event-grid-mobile {
+    grid-template-columns: 1fr !important;
+  }
 }
