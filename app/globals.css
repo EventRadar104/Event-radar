@@ -7,38 +7,33 @@
 }
 
 :root {
-  --bg:       #FAFAF8;
-  --white:    #FFFFFF;
-  --ink:      #111111;
-  --ink2:     #444444;
-  --ink3:     #888888;
-  --ink4:     #BBBBBB;
-  --border:   #E8E6E1;
-  --border2:  #F0EEE9;
-  --green:    #2D6A4F;
+  --bg: #FAFAF8;
+  --white: #FFFFFF;
+  --ink: #111111;
+  --ink2: #444444;
+  --ink3: #888888;
+  --ink4: #BBBBBB;
+  --border: #E8E6E1;
+  --border2: #F0EEE9;
+  --green: #2D6A4F;
   --green-lt: #EAF2EE;
-  --stone:    #F5F3EE;
-  --shadow:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
-  --shadow-md:0 2px 8px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
-
-  --font-sans:  var(--font-inter, 'Inter', system-ui, sans-serif);
+  --stone: #F5F3EE;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+  --shadow-md: 0 2px 8px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
+  --font-sans: var(--font-inter, 'Inter', system-ui, sans-serif);
   --font-serif: 'Instrument Serif', Georgia, serif;
-
-  /* Category accent colours */
-  --cat-music:   #7c3aed;
-  --cat-sports:  #1d4ed8;
-  --cat-food:    #c2410c;
-  --cat-arts:    #b45309;
+  --cat-music: #7c3aed;
+  --cat-sports: #1d4ed8;
+  --cat-food: #c2410c;
+  --cat-arts: #b45309;
   --cat-outdoor: #0f766e;
   --cat-culture: #9d174d;
-  --cat-comedy:  #be185d;
-  --cat-tech:    #0369a1;
-  --cat-other:   #374151;
+  --cat-comedy: #be185d;
+  --cat-tech: #0369a1;
+  --cat-other: #374151;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-sans);
@@ -47,9 +42,9 @@ body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-/* Live pulse animation for nav dot */
 @keyframes livePulse {
   0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.7); }
   70%  { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
@@ -65,7 +60,6 @@ body {
   flex-shrink: 0;
 }
 
-/* Category placeholder backgrounds (used on event images when no cover photo) */
 .ph-music   { background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%); }
 .ph-sports  { background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); }
 .ph-food    { background: linear-gradient(135deg, #7c2d12 0%, #c2410c 100%); }
@@ -76,7 +70,6 @@ body {
 .ph-tech    { background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%); }
 .ph-default { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); }
 
-/* Nav pill links */
 .nav-pill {
   border: 1.5px solid #E8E6E1;
   border-radius: 40px;
@@ -90,4 +83,45 @@ body {
   border-color: #2D6A4F;
   color: #2D6A4F !important;
   background: #EAF2EE;
+}
+
+/* ─── Mobile tab bar ─────────────────────────────── */
+
+/* Hidden on desktop, shown on mobile */
+.mobile-tab-bar { display: none !important; }
+
+@media (max-width: 640px) {
+  .mobile-tab-bar { display: block !important; }
+
+  /* Add bottom padding so content never hides behind the tab bar */
+  main { padding-bottom: 70px !important; }
+
+  /* Nav: hide secondary items */
+  .nav-hide-mobile { display: none !important; }
+
+  /* Hero section: tighter padding */
+  .hero-section { padding: 28px 16px 24px !important; }
+
+  /* Hero search bar: stack vertically */
+  .hero-form {
+    flex-direction: column !important;
+    border-radius: 14px !important;
+    max-width: 100% !important;
+  }
+  .hero-form-col {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 12px 16px !important;
+  }
+  .hero-form-btn {
+    border-radius: 0 0 12px 12px !important;
+    padding: 14px !important;
+    width: 100% !important;
+    text-align: center !important;
+  }
+}
+
+@media (min-width: 641px) {
+  /* Desktop: show all nav items */
+  .nav-hide-mobile { display: flex !important; }
 }

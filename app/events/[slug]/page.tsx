@@ -11,6 +11,7 @@ import { AddToGroupButton } from '@/components/AddToGroupModal'
 import { RsvpButton } from '@/components/RsvpButton'
 import { BackButton } from '@/components/BackButton'
 import ViewTracker from './ViewTracker'
+import { getTicketUrl } from '@/lib/affiliate'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -143,7 +144,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             </div>
           </div>
           {event.ticket_url && (
-            <a href={event.ticket_url} target="_blank" rel="noopener noreferrer" style={{ background:'var(--green)', color:'#fff', border:'none', borderRadius:12, padding:'14px 28px', fontSize:16, fontWeight:500, textDecoration:'none', flexShrink:0 }}>
+            <a href={getTicketUrl(event.ticket_url) ?? '#'} target="_blank" rel="noopener noreferrer" style={{ background:'var(--green)', color:'#fff', border:'none', borderRadius:12, padding:'14px 28px', fontSize:16, fontWeight:500, textDecoration:'none', flexShrink:0 }}>
               {event.is_free ? 'Se arrangement →' : 'Get tickets →'}
             </a>
           )}

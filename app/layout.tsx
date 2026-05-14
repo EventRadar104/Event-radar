@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Instrument_Serif, Inter } from 'next/font/google'
 import './globals.css'
 import { Nav } from '@/components/Nav'
+import { MobileTabBar } from '@/components/MobileTabBar'
 
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
@@ -27,6 +28,9 @@ export const metadata: Metadata = {
     locale: 'nb_NO',
     type: 'website',
   },
+  other: {
+    'impact-site-verification': '787be7d9-82e4-4097-9fbd-af6b3a2433ca',
+  },
 }
 
 export default function RootLayout({
@@ -36,9 +40,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="nb" className={`${instrumentSerif.variable} ${inter.variable}`}>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
+        />
+      </head>
       <body>
         <Nav />
-        <main>{children}</main>
+        <main style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          {children}
+        </main>
+        <MobileTabBar />
       </body>
     </html>
   )
