@@ -19,12 +19,9 @@
   --green-lt: #EAF2EE;
   --stone: #F5F3EE;
   --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
-  --shadow-md:0 2px 8px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
-
+  --shadow-md: 0 2px 8px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
   --font-sans: var(--font-inter, 'Inter', system-ui, sans-serif);
   --font-serif: 'Instrument Serif', Georgia, serif;
-
-  /* Category accent colours */
   --cat-music: #7c3aed;
   --cat-sports: #1d4ed8;
   --cat-food: #c2410c;
@@ -36,9 +33,7 @@
   --cat-other: #374151;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-sans);
@@ -47,13 +42,12 @@ body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden; /* Prevent horizontal scroll on all pages */
+  overflow-x: hidden;
 }
 
-/* Live pulse animation for nav dot */
 @keyframes livePulse {
-  0% { box-shadow: 0 0 0 0 rgba(220,38,38,.7); }
-  70% { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+  0%   { box-shadow: 0 0 0 0 rgba(220,38,38,.7); }
+  70%  { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
   100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
 }
 
@@ -66,7 +60,6 @@ body {
   flex-shrink: 0;
 }
 
-/* Category placeholder backgrounds (used on event images when no cover photo) */
 .ph-music   { background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%); }
 .ph-sports  { background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); }
 .ph-food    { background: linear-gradient(135deg, #7c2d12 0%, #c2410c 100%); }
@@ -77,7 +70,6 @@ body {
 .ph-tech    { background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%); }
 .ph-default { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); }
 
-/* Nav pill links */
 .nav-pill {
   border: 1.5px solid #E8E6E1;
   border-radius: 40px;
@@ -93,37 +85,24 @@ body {
   background: #EAF2EE;
 }
 
-/* ─────────────────────────────────────────────────── */
-/* Mobile styles (max-width: 640px)                   */
-/* ─────────────────────────────────────────────────── */
+/* ─── Mobile tab bar ─────────────────────────────── */
 
-/* Hide non-essential nav items on mobile */
-.nav-hide-mobile { display: none !important; }
-
-/* Hero search bar: stack vertically on mobile */
-.hero-form { display: flex; }
-.hero-form-col { flex: 1; }
-
-@media (min-width: 641px) {
-  /* Desktop: show all nav items */
-  .nav-hide-mobile { display: flex !important; }
-
-  /* Inline search form on desktop */
-  .hero-form { flex-direction: row; }
-  .hero-form-col {
-    border-right: 1px solid var(--border);
-    border-bottom: none !important;
-  }
-  .hero-form-col:last-of-type { border-right: none; }
-  .hero-form-btn {
-    border-radius: 0 !important;
-    padding: 0 26px !important;
-    width: auto !important;
-  }
-}
+/* Hidden on desktop, shown on mobile */
+.mobile-tab-bar { display: none !important; }
 
 @media (max-width: 640px) {
-  /* Hero search: stack vertically */
+  .mobile-tab-bar { display: block !important; }
+
+  /* Add bottom padding so content never hides behind the tab bar */
+  main { padding-bottom: 70px !important; }
+
+  /* Nav: hide secondary items */
+  .nav-hide-mobile { display: none !important; }
+
+  /* Hero section: tighter padding */
+  .hero-section { padding: 28px 16px 24px !important; }
+
+  /* Hero search bar: stack vertically */
   .hero-form {
     flex-direction: column !important;
     border-radius: 14px !important;
@@ -140,14 +119,9 @@ body {
     width: 100% !important;
     text-align: center !important;
   }
+}
 
-  /* Tighter hero padding on mobile */
-  .hero-section {
-    padding: 32px 16px 28px !important;
-  }
-
-  /* Single column event grid on very small screens */
-  .event-grid-mobile {
-    grid-template-columns: 1fr !important;
-  }
+@media (min-width: 641px) {
+  /* Desktop: show all nav items */
+  .nav-hide-mobile { display: flex !important; }
 }
