@@ -364,12 +364,26 @@ export async function getPublishedEventCount(): Promise<number> {
 export async function getTrendingEvent() {
   try {
     const supabase = await createClient()
-    const { data: stats } = await supabase
+
+    const { data: cat } = await supabase
+      .from('categories').select('id').eq('slug', 'concerts-music').maybeSingle()
+    let musicIds: string[] = []
+    if (cat?.id) {
+      const { data: catData } = await supabase
+        .from('event_categories').select('event_id').eq('category_id', cat.id)
+      musicIds = (catData ?? []).map((r: { event_id: string }) => r.event_id)
+    }
+    const useMusicFilter = musicIds.length >= 5
+
+    let statsQuery = supabase
       .from('organizer_event_stats')
       .select('event_id, views_total, save_count')
       .order('views_total', { ascending: false })
       .limit(21)
+    if (useMusicFilter) statsQuery = statsQuery.in('event_id', musicIds)
+    const { data: stats } = await statsQuery
     if (!stats || stats.length === 0) return null
+
     const rankedIds = stats
       .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
       .map(s => s.event_id)
@@ -394,12 +408,26 @@ export async function getHotEvents(excludeId = '', limit = 10, page = 1) {
   try {
     const supabase = await createClient()
     const offset = (page - 1) * limit
-    const { data: stats } = await supabase
+
+    const { data: cat } = await supabase
+      .from('categories').select('id').eq('slug', 'concerts-music').maybeSingle()
+    let musicIds: string[] = []
+    if (cat?.id) {
+      const { data: catData } = await supabase
+        .from('event_categories').select('event_id').eq('category_id', cat.id)
+      musicIds = (catData ?? []).map((r: { event_id: string }) => r.event_id)
+    }
+    const useMusicFilter = musicIds.length >= 5
+
+    let statsQuery = supabase
       .from('organizer_event_stats')
       .select('event_id, views_total, save_count')
       .order('views_total', { ascending: false })
       .limit(21)
+    if (useMusicFilter) statsQuery = statsQuery.in('event_id', musicIds)
+    const { data: stats } = await statsQuery
     if (!stats || stats.length === 0) return []
+
     const rankedIds = stats
       .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
       .map(s => s.event_id)
