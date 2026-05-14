@@ -98,7 +98,7 @@ export function EventCard({ event }: EventCardProps) {
             fill
             sizes="(max-width: 768px) 100vw, 400px"
             quality={80}
-            style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
+            style={{ objectFit: 'cover', objectPosition: 'center top' }}
           />
         )}
         <button className="event-card-heart" onClick={handleHeart} aria-label={saved ? 'Remove from saved' : 'Save event'}>
