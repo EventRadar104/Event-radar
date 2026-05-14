@@ -18,8 +18,8 @@ export async function Nav() {
       height: 60,
       display: 'flex',
       alignItems: 'center',
-      padding: '0 24px',
-      gap: 16,
+      padding: '0 16px',
+      gap: 12,
     }}>
       {/* Logo */}
       <Link href="/" style={{ display:'flex', alignItems:'center', gap:8, fontFamily:'var(--font-serif)', fontSize:20, flexShrink:0, textDecoration:'none', color:'var(--ink)' }}>
@@ -29,27 +29,32 @@ export async function Nav() {
         Event Radar
       </Link>
 
-      {/* Search — client component for interactivity */}
-      <NavSearch />
+      {/* Search — hidden on mobile */}
+      <div className="nav-hide-mobile" style={{ display:'flex', flex:1 }}>
+        <NavSearch />
+      </div>
 
       {/* Right side */}
       <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
-        <NavPillLink href="/trip">Plan a trip</NavPillLink>
-        {user && (
-          <NavPillLink href="/saved"><span>♡</span> Saved</NavPillLink>
-        )}
-        {user && (
-          <NavPillLink href="/groups">Groups</NavPillLink>
-        )}
-        <Link href="/events/new" style={{ background:'var(--ink)', color:'#fff', border:'none', borderRadius:40, padding:'8px 18px', fontSize:13, fontWeight:500, whiteSpace:'nowrap', textDecoration:'none' }}>
+        {/* Secondary links — hidden on mobile */}
+        <div className="nav-hide-mobile" style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <NavPillLink href="/trip">Plan a trip</NavPillLink>
+          {user && <NavPillLink href="/saved"><span>♡</span> Saved</NavPillLink>}
+          {user && <NavPillLink href="/groups">Groups</NavPillLink>}
+        </div>
+
+        {/* Post event — always visible */}
+        <Link href="/events/new" style={{ background:'var(--ink)', color:'#fff', border:'none', borderRadius:40, padding:'8px 14px', fontSize:13, fontWeight:500, whiteSpace:'nowrap', textDecoration:'none' }}>
           + Post event
         </Link>
+
+        {/* Avatar / Sign in — always visible */}
         {user ? (
-          <Link href="/dashboard" style={{ width:32, height:32, borderRadius:'50%', background:'var(--green-lt)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--green)', textDecoration:'none' }}>
+          <Link href="/dashboard" style={{ width:32, height:32, borderRadius:'50%', background:'var(--green-lt)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--green)', textDecoration:'none', flexShrink:0 }}>
             <svg viewBox="0 0 16 16" fill="none" width={16} height={16}><circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </Link>
         ) : (
-          <Link href="/sign-in" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8 }}>
+          <Link href="/sign-in" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', textDecoration:'none' }}>
             Sign in
           </Link>
         )}
