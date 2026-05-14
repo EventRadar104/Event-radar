@@ -569,7 +569,7 @@ export default function TripPage() {
           Plan a trip
         </h1>
         <p style={{ fontSize: 14, color: 'var(--ink3)' }}>
-          Find events, build your itinerary, and share it with friends.
+          Browse events across Norway. Build your trip around them.
         </p>
       </div>
 
