@@ -116,6 +116,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             style={{ objectFit:'cover' }}
             priority
             sizes="100vw"
+            quality={90}
           />
         ) : (
           <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textAlign:'center', padding:24 }}>
