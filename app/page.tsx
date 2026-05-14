@@ -3,7 +3,7 @@ import Link from 'next/link'
 import {
   searchEvents,
   getPublishedEventCount,
-  getFeaturedEvent,
+  getTrendingEvent,
   getHotEvents,
   getWeekendEvents,
   getFreeEvents,
@@ -52,12 +52,13 @@ export default async function HomePage({ searchParams }: PageProps) {
   const hasTraditionalFilters = !!(activeCity || activeCat || params.q || onlyFree || params.from)
   const isHomePage = !hasTraditionalFilters && !isSortHot && !isWeekend
 
+  const featured = isHomePage ? await getTrendingEvent() : null
+
   const [
     totalCount,
     searchResults,
     hotAllEvents,
     weekendAllEvents,
-    featured,
     hotEvents,
     weekendEvents,
     freeEvents,
@@ -65,10 +66,9 @@ export default async function HomePage({ searchParams }: PageProps) {
   ] = await Promise.all([
     getPublishedEventCount(),
     hasTraditionalFilters ? searchEvents(params) : Promise.resolve([] as EventWithDetails[]),
-    isSortHot ? getHotEvents(50, page) : Promise.resolve([] as EventWithDetails[]),
+    isSortHot ? getHotEvents('', 50, page) : Promise.resolve([] as EventWithDetails[]),
     isWeekend ? getWeekendEvents(50, page) : Promise.resolve([] as EventWithDetails[]),
-    isHomePage ? getFeaturedEvent() : Promise.resolve(null as EventWithDetails | null),
-    isHomePage ? getHotEvents(12) : Promise.resolve([] as EventWithDetails[]),
+    isHomePage ? getHotEvents(featured?.id ?? '', 12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getWeekendEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getFreeEvents(12) : Promise.resolve([] as EventWithDetails[]),
     isHomePage ? getDiscoverEvents(50) : Promise.resolve([] as EventWithDetails[]),

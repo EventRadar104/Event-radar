@@ -361,7 +361,7 @@ export async function getPublishedEventCount(): Promise<number> {
 // HOMEPAGE SECTIONS
 // ─────────────────────────────────────────
 
-export async function getFeaturedEvent() {
+export async function getTrendingEvent() {
   try {
     const supabase = await createClient()
     const { data } = await supabase
@@ -370,27 +370,36 @@ export async function getFeaturedEvent() {
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
       .not('cover_image_url', 'is', null)
-      .order('price_from', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    return data as EventWithDetails | null
+      .order('views_total', { ascending: false })
+      .limit(50)
+    if (!data || data.length === 0) return null
+    const sorted = (data as EventWithDetails[]).sort(
+      (a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count)
+    )
+    return sorted[0] ?? null
   } catch {
     return null
   }
 }
 
-export async function getHotEvents(limit = 10, page = 1) {
+export async function getHotEvents(excludeId = '', limit = 10, page = 1) {
   try {
     const supabase = await createClient()
     const offset = (page - 1) * limit
-    const { data } = await supabase
+    let query = supabase
       .from('events_with_details')
       .select('*')
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
-      .order('starts_at', { ascending: true })
-      .range(offset, offset + limit - 1)
-    return (data ?? []) as EventWithDetails[]
+      .not('cover_image_url', 'is', null)
+      .order('views_total', { ascending: false })
+      .limit(100)
+    if (excludeId) query = query.neq('id', excludeId)
+    const { data } = await query
+    if (!data) return []
+    return (data as EventWithDetails[])
+      .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
+      .slice(offset, offset + limit)
   } catch {
     return []
   }
