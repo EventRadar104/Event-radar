@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { NavSearch } from './NavSearch'
+import { NavPillLink } from './NavPillLink'
 
 export async function Nav() {
   const supabase = await createClient()
@@ -33,18 +34,12 @@ export async function Nav() {
 
       {/* Right side */}
       <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
-        <Link href="/trip" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', textDecoration:'none' }}>
-          Plan a trip
-        </Link>
+        <NavPillLink href="/trip">Plan a trip</NavPillLink>
         {user && (
-          <Link href="/saved" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:4, textDecoration:'none' }}>
-            <span>♡</span> Saved
-          </Link>
+          <NavPillLink href="/saved"><span>♡</span> Saved</NavPillLink>
         )}
         {user && (
-          <Link href="/groups" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', textDecoration:'none' }}>
-            Groups
-          </Link>
+          <NavPillLink href="/groups">Groups</NavPillLink>
         )}
         <Link href="/events/new" style={{ background:'var(--ink)', color:'#fff', border:'none', borderRadius:40, padding:'8px 18px', fontSize:13, fontWeight:500, whiteSpace:'nowrap', textDecoration:'none' }}>
           + Post event

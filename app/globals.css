@@ -75,3 +75,19 @@ body {
 .ph-comedy  { background: linear-gradient(135deg, #831843 0%, #be185d 100%); }
 .ph-tech    { background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%); }
 .ph-default { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); }
+
+/* Nav pill links */
+.nav-pill {
+  border: 1.5px solid #E8E6E1;
+  border-radius: 40px;
+  padding: 8px 16px;
+  transition: all 0.15s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nav-pill:hover,
+.nav-pill.active {
+  border-color: #2D6A4F;
+  color: #2D6A4F !important;
+  background: #EAF2EE;
+}
