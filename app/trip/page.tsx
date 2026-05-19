@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Tromsø', 'Stavanger', 'Kristiansand']
@@ -26,6 +26,10 @@ export default function TripPage() {
   const [selectedWhen,     setSelectedWhen]     = useState<string | null>(null)
   const [pickDate,         setPickDate]         = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+
+  useEffect(() => {
+    router.prefetch('/map')
+  }, [router])
 
   function handleBrowseMap() {
     const params = new URLSearchParams()

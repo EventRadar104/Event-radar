@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { GroupAvatar } from '@/components/groups/GroupAvatar'
 import type { GroupWithCounts } from '@/lib/types'
@@ -16,7 +16,6 @@ function TrashIcon() {
 }
 
 export function GroupListClient({ groups: initial, userId }: { groups: GroupWithCounts[]; userId: string }) {
-  const router = useRouter()
   const [groups, setGroups] = useState(initial)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState('')
@@ -87,9 +86,9 @@ export function GroupListClient({ groups: initial, userId }: { groups: GroupWith
 
         return (
           <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div
-              onClick={() => router.push(`/groups/${g.id}`)}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 14, padding: 16, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', minWidth: 0 }}
+            <Link
+              href={`/groups/${g.id}`}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 14, padding: 16, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', minWidth: 0, textDecoration: 'none', color: 'inherit' }}
             >
               <GroupAvatar name={g.name} imageUrl={g.cover_image_url} size={48} />
 
@@ -130,7 +129,7 @@ export function GroupListClient({ groups: initial, userId }: { groups: GroupWith
               </div>
 
               <div style={{ fontSize: 13, color: 'var(--ink4)', flexShrink: 0 }}>→</div>
-            </div>
+            </Link>
             {isAdmin ? (
               <button
                 onClick={() => setDeleteConfirmId(g.id)}
