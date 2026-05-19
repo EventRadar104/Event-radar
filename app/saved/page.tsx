@@ -24,6 +24,16 @@ function TrashIcon() {
   )
 }
 
+function SavedEventsSkeleton() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginTop: 32 }}>
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="animate-pulse" style={{ height: 192, borderRadius: 12, background: '#F5F3EE' }} />
+      ))}
+    </div>
+  )
+}
+
 export default function SavedPage() {
   const [events, setEvents] = useState<EventWithDetails[] | null>(null)
   const [trips, setTrips] = useState<SavedTrip[] | null>(null)
@@ -71,9 +81,7 @@ export default function SavedPage() {
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px 100px' }}>
       <h1 style={{ fontSize: 'clamp(22px,3vw,32px)', marginBottom: 8 }}>Lagrede arrangementer</h1>
 
-      {events === null && (
-        <p style={{ color: 'var(--ink3)', marginTop: 32 }}>Laster...</p>
-      )}
+      {events === null && <SavedEventsSkeleton />}
 
       {events !== null && events.length === 0 && (
         <div style={{ marginTop: 48, textAlign: 'center' }}>
