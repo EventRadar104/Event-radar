@@ -112,6 +112,44 @@ function fmtDate(e: EventWithDetails): string {
   })
 }
 
+function fmtMapTabDate(isoStr: string): string {
+  return new Date(isoStr).toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+  })
+}
+
+function mapTabPriceLabel(event: MapTabEvent): string {
+  if (event.is_free) return 'Free'
+  if (event.price_from) return `${event.price_from}kr`
+  return '?'
+}
+
+function mapTabPriceDisplay(event: MapTabEvent): string {
+  if (event.is_free) return 'Free'
+  if (event.price_from) return `from ${event.price_from} kr`
+  return 'See organiser'
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeSvgMarkerIcon(color: string, label: string, g: any) {
+  const size = 48
+  const r = size / 2 - 2
+  const text = label.length > 6 ? label.slice(0, 6) : label
+  const fontSize = text.length <= 4 ? 12 : 10
+  const svg = [
+    `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">`,
+    `<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="${color}" stroke="white" stroke-width="2.5"/>`,
+    `<text x="${size / 2}" y="${size / 2 + Math.round(fontSize / 3)}" text-anchor="middle" fill="white"`,
+    ` font-size="${fontSize}" font-weight="bold" font-family="-apple-system,sans-serif">${text}</text>`,
+    `</svg>`,
+  ].join('')
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new g.maps.Size(size, size),
+    anchor: new g.maps.Point(size / 2, size / 2),
+  }
+}
+
 function buildEventOverlayDiv(event: EventWithDetails, zoom: number): HTMLDivElement {
   const div = document.createElement('div')
   div.style.cssText = 'position:absolute;cursor:pointer;transform:translate(-50%,-50%)'
@@ -125,21 +163,6 @@ function buildEventOverlayDiv(event: EventWithDetails, zoom: number): HTMLDivEle
     circle.style.cssText = `width:20px;height:20px;border-radius:50%;background:${categoryColor(event)};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3)`
     div.appendChild(circle)
   }
-  return div
-}
-
-function buildMapTabMarker(event: MapTabEvent): HTMLDivElement {
-  const label = event.is_free ? 'Free' : event.price_from ? `${event.price_from} kr` : '?'
-  const bg = event.is_free ? '#22c55e' : '#111827'
-  const div = document.createElement('div')
-  div.style.cssText = 'position:absolute;transform:translate(-50%,-100%);cursor:pointer'
-  const pill = document.createElement('div')
-  pill.style.cssText = `background:${bg};color:#fff;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);position:relative`
-  pill.textContent = label
-  const tip = document.createElement('div')
-  tip.style.cssText = `position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid ${bg}`
-  pill.appendChild(tip)
-  div.appendChild(pill)
   return div
 }
 
@@ -165,14 +188,14 @@ export default function TripPage() {
   const mapTabDivRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapTabRef = useRef<any>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapTabOverlaysRef = useRef<any[]>([])
+  const mapTabMarkersRef = useRef<Array<{ event: MapTabEvent; marker: any }>>([]) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const listRef = useRef<HTMLDivElement>(null)
 
   const [activeTab, setActiveTab] = useState<'cities' | 'map'>('cities')
   const [mapTabShown, setMapTabShown] = useState(false)
   const [mapTabLoading, setMapTabLoading] = useState(false)
   const [mapTabEvents, setMapTabEvents] = useState<MapTabEvent[]>([])
-  const [selectedMapEvent, setSelectedMapEvent] = useState<MapTabEvent | null>(null)
+  const [activeMapEventId, setActiveMapEventId] = useState<string | null>(null)
 
   const [mapsLoaded, setMapsLoaded] = useState(false)
   const [events, setEvents] = useState<EventWithDetails[]>([])
@@ -342,7 +365,7 @@ export default function TripPage() {
     })
   }, [])
 
-  // Initialize Map tab on first activation
+  // Initialize Map tab on first activation — circle markers, Oslo center
   useEffect(() => {
     if (!mapTabShown) return
     if (mapTabRef.current) return
@@ -371,50 +394,59 @@ export default function TripPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const g = (window as any).google
       mapTabRef.current = new g.maps.Map(mapTabDivRef.current, {
-        center: { lat: 64.5, lng: 17.5 },
-        zoom: 5,
+        center: { lat: 59.9139, lng: 10.7522 },
+        zoom: 11,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
         gestureHandling: 'greedy',
       })
 
-      g.maps.event.addListener(mapTabRef.current, 'click', () => setSelectedMapEvent(null))
+      const PIN_COLOR = '#2D6A4F'
 
-      // Build price-label markers
       evs.forEach(event => {
         const lat = event.venues?.latitude
         const lng = event.venues?.longitude
         if (lat == null || lng == null) return
-        const position = new g.maps.LatLng(lat, lng)
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const overlay = new (g.maps.OverlayView as any)()
-        let div: HTMLDivElement | null = null
+        const marker = new (g.maps.Marker as any)({
+          position: { lat, lng },
+          map: mapTabRef.current,
+          icon: makeSvgMarkerIcon(PIN_COLOR, mapTabPriceLabel(event), g),
+          optimized: false,
+        })
 
-        overlay.onAdd = function (this: typeof overlay) {
-          div = buildMapTabMarker(event)
-          div.addEventListener('click', (e: MouseEvent) => {
-            e.stopPropagation()
-            setSelectedMapEvent(event)
-          })
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ;(this.getPanes() as any).overlayMouseTarget.appendChild(div)
-        }
-        overlay.draw = function (this: typeof overlay) {
-          if (!div) return
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const pt = (this.getProjection() as any).fromLatLngToDivPixel(position)
-          if (pt) { div.style.left = `${pt.x}px`; div.style.top = `${pt.y}px` }
-        }
-        overlay.onRemove = function () { div?.parentNode?.removeChild(div); div = null }
+        marker.addListener('click', () => {
+          setActiveMapEventId(event.id)
+        })
 
-        overlay.setMap(mapTabRef.current)
-        mapTabOverlaysRef.current.push(overlay)
+        mapTabMarkersRef.current.push({ event, marker })
       })
 
       setMapTabLoading(false)
     })
   }, [mapTabShown])
+
+  // When active map event changes: update pin colors and scroll list
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).google
+    if (!g || !mapTabRef.current) return
+
+    const PIN_NORMAL = '#2D6A4F'
+    const PIN_ACTIVE = '#1a3d2b'
+
+    mapTabMarkersRef.current.forEach(({ event, marker }) => {
+      const isActive = event.id === activeMapEventId
+      marker.setIcon(makeSvgMarkerIcon(isActive ? PIN_ACTIVE : PIN_NORMAL, mapTabPriceLabel(event), g))
+    })
+
+    if (activeMapEventId && listRef.current) {
+      const el = listRef.current.querySelector(`[data-map-event-id="${activeMapEventId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [activeMapEventId])
 
   // Trigger map resize when switching tabs so Google Maps repaints correctly
   useEffect(() => {
@@ -686,6 +718,17 @@ export default function TripPage() {
     doPlanWithFriends(userId, city, tripEvents).finally(() => setPlanningWithFriends(false))
   }
 
+  // Pan map to event and highlight pin when list item is tapped
+  function handleMapListClick(event: MapTabEvent) {
+    const lat = event.venues?.latitude
+    const lng = event.venues?.longitude
+    setActiveMapEventId(event.id)
+    if (lat != null && lng != null && mapTabRef.current) {
+      mapTabRef.current.panTo({ lat, lng })
+      if ((mapTabRef.current.getZoom() ?? 0) < 13) mapTabRef.current.setZoom(13)
+    }
+  }
+
   const weekend = getWeekendDates()
 
   // Derived sidebar data
@@ -695,12 +738,27 @@ export default function TripPage() {
   return (
     <>
       <style>{`
-        @keyframes slideUpSheet {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
         @keyframes mapTabSpin {
           to { transform: rotate(360deg); }
+        }
+        /* Cities tab: map+sidebar grid responsive */
+        .cities-grid {
+          display: grid;
+          grid-template-columns: 1fr 380px;
+          gap: 20px;
+          margin-bottom: 28px;
+        }
+        @media (max-width: 640px) {
+          .cities-grid { grid-template-columns: 1fr; }
+        }
+        /* Map tab container height — subtract mobile nav on small screens */
+        .map-tab-container {
+          display: flex;
+          flex-direction: column;
+          height: calc(100vh - 60px - 56px);
+        }
+        @media (max-width: 640px) {
+          .map-tab-container { height: calc(100vh - 60px - 56px - 70px); }
         }
       `}</style>
 
@@ -812,8 +870,8 @@ export default function TripPage() {
           ))}
         </div>
 
-        {/* Map + sidebar */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, marginBottom: 28 }}>
+        {/* Map + sidebar — responsive via cities-grid class */}
+        <div className="cities-grid">
           <div
             ref={mapDivRef}
             style={{ height: '60vh', minHeight: 400, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--stone)' }}
@@ -933,86 +991,88 @@ export default function TripPage() {
         )}
       </div>
 
-      {/* ── MAP TAB ── rendered on first activation, hidden when inactive */}
+      {/* ── MAP TAB ── split layout: 45vh map + scrollable event list */}
       {mapTabShown && (
-        <div style={{ display: activeTab === 'map' ? '' : 'none', position: 'relative' }}>
-          {/* Spinner overlay while map loads */}
-          {mapTabLoading && (
-            <div style={{
-              position: 'absolute', inset: 0, zIndex: 10,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--stone)',
-              height: 'calc(100vh - 60px - 56px)',
-            }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%',
-                border: '3px solid var(--border)', borderTopColor: 'var(--green)',
-                animation: 'mapTabSpin .8s linear infinite',
-                marginBottom: 12,
-              }} />
-              <span style={{ fontSize: 14, color: 'var(--ink3)' }}>Loading map…</span>
-            </div>
-          )}
+        <div className="map-tab-container" style={{ display: activeTab === 'map' ? '' : 'none' }}>
 
-          {/* Map container */}
-          <div
-            ref={mapTabDivRef}
-            style={{ width: '100%', height: 'calc(100vh - 60px - 56px)' }}
-          />
-
-          {/* Bottom sheet */}
-          {selectedMapEvent && (
-            <div
-              onClick={e => { if (e.target === e.currentTarget) setSelectedMapEvent(null) }}
-              style={{ position: 'absolute', inset: 0, zIndex: 400, background: 'rgba(0,0,0,.2)' }}
-            >
+          {/* Top half: map */}
+          <div style={{ position: 'relative', height: '45vh', flexShrink: 0 }}>
+            {mapTabLoading && (
               <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                height: '40%',
-                background: 'var(--white)',
-                borderRadius: '20px 20px 0 0',
-                padding: '20px 24px 32px',
-                boxShadow: '0 -4px 24px rgba(0,0,0,.12)',
-                animation: 'slideUpSheet .25s ease-out',
-                overflowY: 'auto',
+                position: 'absolute', inset: 0, zIndex: 10,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--stone)',
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                  <h2 style={{ fontSize: 18, fontFamily: 'var(--font-serif)', fontWeight: 400, lineHeight: 1.3, paddingRight: 8, margin: 0 }}>
-                    {selectedMapEvent.title}
-                  </h2>
-                  <button
-                    onClick={() => setSelectedMapEvent(null)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--ink3)', flexShrink: 0, lineHeight: 1, padding: '0 2px' }}
-                  >
-                    ×
-                  </button>
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 6 }}>
-                  {new Date(selectedMapEvent.starts_at).toLocaleDateString('en-GB', {
-                    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-                  })}
-                  {selectedMapEvent.venues?.name ? ` · ${selectedMapEvent.venues.name}` : ''}
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: selectedMapEvent.is_free ? 'var(--green)' : 'var(--ink)', marginBottom: 18 }}>
-                  {selectedMapEvent.is_free
-                    ? 'Free'
-                    : selectedMapEvent.price_from
-                    ? `from ${selectedMapEvent.price_from} kr`
-                    : 'See organiser'}
-                </div>
-                <a
-                  href={`/events/${selectedMapEvent.id}`}
-                  style={{
-                    display: 'block', background: 'var(--green)', color: '#fff',
-                    borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 500,
-                    textDecoration: 'none', textAlign: 'center',
-                  }}
-                >
-                  View event →
-                </a>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  border: '3px solid var(--border)', borderTopColor: 'var(--green)',
+                  animation: 'mapTabSpin .8s linear infinite',
+                  marginBottom: 12,
+                }} />
+                <span style={{ fontSize: 14, color: 'var(--ink3)' }}>Loading map…</span>
               </div>
-            </div>
-          )}
+            )}
+            <div ref={mapTabDivRef} style={{ width: '100%', height: '100%' }} />
+          </div>
+
+          {/* Bottom half: scrollable event list */}
+          <div
+            ref={listRef}
+            style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: 'var(--white)', borderTop: '1px solid var(--border)' }}
+          >
+            {!mapTabLoading && mapTabEvents.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>📍</div>
+                No events with location data found.
+              </div>
+            ) : (
+              mapTabEvents.map(event => {
+                const isActive = event.id === activeMapEventId
+                return (
+                  <div
+                    key={event.id}
+                    data-map-event-id={event.id}
+                    onClick={() => handleMapListClick(event)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '14px 16px',
+                      borderBottom: '1px solid var(--border)',
+                      cursor: 'pointer',
+                      background: isActive ? 'var(--green-lt)' : 'var(--white)',
+                      transition: 'background .15s',
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {event.title}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {event.venues?.name ?? ''}
+                        {event.venues?.name ? ' · ' : ''}
+                        {fmtMapTabDate(event.starts_at)}
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: event.is_free ? 'var(--green)' : 'var(--ink2)' }}>
+                        {mapTabPriceDisplay(event)}
+                      </div>
+                    </div>
+                    <a
+                      href={`/events/${event.id}`}
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        flexShrink: 0, marginLeft: 12,
+                        background: 'var(--green)', color: '#fff',
+                        borderRadius: 8, padding: '8px 14px',
+                        fontSize: 13, fontWeight: 500,
+                        textDecoration: 'none', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      View event
+                    </a>
+                  </div>
+                )
+              })
+            )}
+          </div>
         </div>
       )}
 
