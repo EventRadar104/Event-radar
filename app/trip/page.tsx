@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Tromsø', 'Stavanger', 'Kristiansand']
@@ -26,10 +26,20 @@ export default function TripPage() {
   const [selectedWhen,     setSelectedWhen]     = useState<string | null>(null)
   const [pickDate,         setPickDate]         = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [citySearch,       setCitySearch]       = useState('')
+  const cityInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     router.prefetch('/map')
   }, [router])
+
+  const filteredCities = citySearch.trim()
+    ? CITIES.filter(c => c.toLowerCase().includes(citySearch.trim().toLowerCase()))
+    : CITIES
+
+  const showCustomCity =
+    citySearch.trim().length > 0 &&
+    !CITIES.some(c => c.toLowerCase() === citySearch.trim().toLowerCase())
 
   function handleBrowseMap() {
     const params = new URLSearchParams()
@@ -76,8 +86,44 @@ export default function TripPage() {
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>
             City
           </div>
+
+          {/* City search input */}
+          <div style={{ position: 'relative', marginBottom: 12 }}>
+            <input
+              ref={cityInputRef}
+              type="text"
+              value={citySearch}
+              onChange={e => setCitySearch(e.target.value)}
+              placeholder="Search any city in Norway..."
+              style={{
+                width: '100%',
+                padding: '10px 36px 10px 14px',
+                borderRadius: 10,
+                border: '1.5px solid var(--border)',
+                fontSize: 14,
+                background: 'var(--white)',
+                color: 'var(--ink)',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+            {citySearch && (
+              <button
+                onClick={() => { setCitySearch(''); cityInputRef.current?.focus() }}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 16, color: 'var(--ink3)', lineHeight: 1, padding: 2,
+                }}
+                aria-label="Clear city search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
           <div className="trip-city-grid">
-            {CITIES.map(city => {
+            {filteredCities.map(city => {
               const active = selectedCity === city
               return (
                 <button
@@ -102,6 +148,28 @@ export default function TripPage() {
               )
             })}
           </div>
+
+          {showCustomCity && (
+            <button
+              onClick={() => router.push(`/map?city=${encodeURIComponent(citySearch.trim())}`)}
+              style={{
+                marginTop: 10,
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: '1.5px dashed var(--green)',
+                background: 'var(--green-lt)',
+                color: 'var(--green)',
+                textAlign: 'left',
+                transition: 'all .15s',
+              }}
+            >
+              Search events in {citySearch.trim()} →
+            </button>
+          )}
         </div>
 
         {/* When filter */}
