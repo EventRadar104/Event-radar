@@ -32,6 +32,19 @@ interface CityDot {
   count: number
 }
 
+interface MapTabEvent {
+  id: string
+  title: string
+  starts_at: string
+  is_free: boolean
+  price_from: number | null
+  venues: {
+    name: string | null
+    latitude: number | null
+    longitude: number | null
+  } | null
+}
+
 function buildVenueGroups(events: EventWithDetails[]): VenueGroup[] {
   const map = new Map<string, VenueGroup>()
   for (const e of events) {
@@ -115,6 +128,21 @@ function buildEventOverlayDiv(event: EventWithDetails, zoom: number): HTMLDivEle
   return div
 }
 
+function buildMapTabMarker(event: MapTabEvent): HTMLDivElement {
+  const label = event.is_free ? 'Free' : event.price_from ? `${event.price_from} kr` : '?'
+  const bg = event.is_free ? '#22c55e' : '#111827'
+  const div = document.createElement('div')
+  div.style.cssText = 'position:absolute;transform:translate(-50%,-100%);cursor:pointer'
+  const pill = document.createElement('div')
+  pill.style.cssText = `background:${bg};color:#fff;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);position:relative`
+  pill.textContent = label
+  const tip = document.createElement('div')
+  tip.style.cssText = `position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid ${bg}`
+  pill.appendChild(tip)
+  div.appendChild(pill)
+  return div
+}
+
 export default function TripPage() {
   const router = useRouter()
   const mapDivRef = useRef<HTMLDivElement>(null)
@@ -132,6 +160,19 @@ export default function TripPage() {
   const mapClickListenerRef = useRef<any>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const filtersRef = useRef({ city: '', fromDate: '', toDate: '', category: '', dateMode: 'single' as DateMode })
+
+  // Map tab refs
+  const mapTabDivRef = useRef<HTMLDivElement>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapTabRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapTabOverlaysRef = useRef<any[]>([])
+
+  const [activeTab, setActiveTab] = useState<'cities' | 'map'>('cities')
+  const [mapTabShown, setMapTabShown] = useState(false)
+  const [mapTabLoading, setMapTabLoading] = useState(false)
+  const [mapTabEvents, setMapTabEvents] = useState<MapTabEvent[]>([])
+  const [selectedMapEvent, setSelectedMapEvent] = useState<MapTabEvent | null>(null)
 
   const [mapsLoaded, setMapsLoaded] = useState(false)
   const [events, setEvents] = useState<EventWithDetails[]>([])
@@ -155,6 +196,11 @@ export default function TripPage() {
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(''), 2000)
+  }
+
+  function handleTabChange(tab: 'cities' | 'map') {
+    if (tab === 'map') setMapTabShown(true)
+    setActiveTab(tab)
   }
 
   // Keep filtersRef current so event-listener callbacks never go stale
@@ -261,7 +307,7 @@ export default function TripPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Initialize Google Maps
+  // Initialize Google Maps (Cities tab)
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     if (!key || !mapDivRef.current) return
@@ -295,6 +341,92 @@ export default function TripPage() {
       setMapsLoaded(true)
     })
   }, [])
+
+  // Initialize Map tab on first activation
+  useEffect(() => {
+    if (!mapTabShown) return
+    if (mapTabRef.current) return
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    if (!key) return
+
+    setMapTabLoading(true)
+    setOptions({ key, v: 'weekly' })
+    const supabase = createClient()
+
+    Promise.all([
+      supabase
+        .from('events')
+        .select('id, title, starts_at, is_free, price_from, venues(name, latitude, longitude)')
+        .eq('status', 'published')
+        .not('venue_id', 'is', null),
+      importLibrary('maps'),
+    ]).then(([{ data }]) => {
+      if (!mapTabDivRef.current) return
+
+      const evs = ((data ?? []) as MapTabEvent[]).filter(
+        e => e.venues?.latitude != null && e.venues?.longitude != null
+      )
+      setMapTabEvents(evs)
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const g = (window as any).google
+      mapTabRef.current = new g.maps.Map(mapTabDivRef.current, {
+        center: { lat: 64.5, lng: 17.5 },
+        zoom: 5,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        gestureHandling: 'greedy',
+      })
+
+      g.maps.event.addListener(mapTabRef.current, 'click', () => setSelectedMapEvent(null))
+
+      // Build price-label markers
+      evs.forEach(event => {
+        const lat = event.venues?.latitude
+        const lng = event.venues?.longitude
+        if (lat == null || lng == null) return
+        const position = new g.maps.LatLng(lat, lng)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const overlay = new (g.maps.OverlayView as any)()
+        let div: HTMLDivElement | null = null
+
+        overlay.onAdd = function (this: typeof overlay) {
+          div = buildMapTabMarker(event)
+          div.addEventListener('click', (e: MouseEvent) => {
+            e.stopPropagation()
+            setSelectedMapEvent(event)
+          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(this.getPanes() as any).overlayMouseTarget.appendChild(div)
+        }
+        overlay.draw = function (this: typeof overlay) {
+          if (!div) return
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pt = (this.getProjection() as any).fromLatLngToDivPixel(position)
+          if (pt) { div.style.left = `${pt.x}px`; div.style.top = `${pt.y}px` }
+        }
+        overlay.onRemove = function () { div?.parentNode?.removeChild(div); div = null }
+
+        overlay.setMap(mapTabRef.current)
+        mapTabOverlaysRef.current.push(overlay)
+      })
+
+      setMapTabLoading(false)
+    })
+  }, [mapTabShown])
+
+  // Trigger map resize when switching tabs so Google Maps repaints correctly
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).google
+    if (!g) return
+    if (activeTab === 'cities' && mapRef.current) {
+      g.maps.event.trigger(mapRef.current, 'resize')
+    } else if (activeTab === 'map' && mapTabRef.current) {
+      g.maps.event.trigger(mapTabRef.current, 'resize')
+    }
+  }, [activeTab])
 
   // Rebuild overlays whenever map data or active venue changes
   useEffect(() => {
@@ -561,208 +693,330 @@ export default function TripPage() {
   const sidebarEvents = activeVenueGroup ? activeVenueGroup.events : events
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 24px 80px' }}>
+    <>
+      <style>{`
+        @keyframes slideUpSheet {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @keyframes mapTabSpin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
 
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 'clamp(24px,4vw,36px)', fontFamily: 'var(--font-serif)', fontWeight: 400, marginBottom: 4 }}>
-          Plan a trip
-        </h1>
-        <p style={{ fontSize: 14, color: 'var(--ink3)' }}>
-          Browse events across Norway. Build your trip around them.
-        </p>
-      </div>
-
-      {/* Search bar */}
-      <div style={{ background: 'var(--white)', border: '1.5px solid var(--border)', borderRadius: 16, display: 'flex', alignItems: 'stretch', overflow: 'hidden', boxShadow: 'var(--shadow-md)', marginBottom: 12 }}>
-        <div style={{ flex: 2, padding: '12px 16px', borderRight: '1px solid var(--border)' }}>
-          <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>City</label>
-          <input
-            type="text"
-            placeholder="Oslo, Bergen, Tromsø..."
-            value={city}
-            onChange={e => setCity(e.target.value)}
-            style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}
-          />
-        </div>
-        <div style={{ flex: 1.5, padding: '12px 16px', borderRight: '1px solid var(--border)', opacity: dateMode === 'weekend' ? 0.4 : 1 }}>
-          <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>From</label>
-          <input
-            type="date"
-            value={dateMode === 'weekend' ? toDateInput(weekend.sat) : fromDate}
-            onChange={e => setFromDate(e.target.value)}
-            disabled={dateMode === 'weekend'}
-            style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)', cursor: dateMode === 'weekend' ? 'not-allowed' : 'text' }}
-          />
-        </div>
-        <div style={{ flex: 1.5, padding: '12px 16px', borderRight: '1px solid var(--border)', opacity: dateMode !== 'range' ? 0.4 : 1 }}>
-          <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>To</label>
-          <input
-            type="date"
-            value={dateMode === 'weekend' ? toDateInput(weekend.sun) : toDate}
-            onChange={e => setToDate(e.target.value)}
-            disabled={dateMode !== 'range'}
-            style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)', cursor: dateMode !== 'range' ? 'not-allowed' : 'text' }}
-          />
-        </div>
-        <div style={{ flex: 1.5, padding: '12px 16px', borderRight: '1px solid var(--border)' }}>
-          <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>Category</label>
-          <select
-            value={category}
-            onChange={e => setCategory(e.target.value)}
-            style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}
-          >
-            <option value="">All events</option>
-            {CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.label}</option>)}
-          </select>
-        </div>
-        <button
-          onClick={doSearch}
-          style={{ background: 'var(--green)', color: '#fff', border: 'none', padding: '0 28px', fontSize: 14, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}
-        >
-          Search
-        </button>
-      </div>
-
-      {/* Date mode toggle */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-        {(['single', 'range', 'weekend'] as DateMode[]).map(mode => (
-          <button
-            key={mode}
-            onClick={() => setDateMode(mode)}
-            style={{
-              padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-              border: '1px solid var(--border)',
-              background: dateMode === mode ? 'var(--ink)' : 'var(--white)',
-              color: dateMode === mode ? '#fff' : 'var(--ink2)',
-            }}
-          >
-            {mode === 'single' ? 'Single date' : mode === 'range' ? 'Date range' : 'This weekend'}
-          </button>
-        ))}
-      </div>
-
-      {/* Map + sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, marginBottom: 28 }}>
-        <div
-          ref={mapDivRef}
-          style={{ height: '60vh', minHeight: 400, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--stone)' }}
-        />
-
-        <div style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-          {/* Active venue filter header */}
-          {activeVenueGroup && (
-            <div style={{ background: '#EAF3DE', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{activeVenueGroup.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                  {activeVenueGroup.events.length} event{activeVenueGroup.events.length !== 1 ? 's' : ''}
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveVenueKey(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--ink3)', lineHeight: 1, padding: '0 2px' }}
-              >
-                ×
-              </button>
-            </div>
-          )}
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>Loading events...</div>
-          ) : zoom < 10 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
-              Zoom in to see events in an area.
-            </div>
-          ) : sidebarEvents.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>No events found in this area.</div>
-          ) : (
-            sidebarEvents.map(event => (
-              <div
-                key={event.id}
-                onClick={() => setSelectedEvent(event)}
-                style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
-              >
-                {event.cover_image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={event.cover_image_url}
-                    alt={event.title}
-                    style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
-                  />
-                )}
-                <div style={{ padding: 14 }}>
-                  <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
-                    {event.category_names?.[0] ?? ''}
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, lineHeight: 1.3 }}>{event.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                    {fmtDate(event)}{event.venue_city ? ` · ${event.venue_city}` : ''}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 3, fontWeight: 500 }}>
-                    {priceText(event)}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+      {/* In-page tab switcher */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '16px 24px 0' }}>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--stone)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+          {(['cities', 'map'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => handleTabChange(tab)}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 500,
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === tab ? 'var(--white)' : 'transparent',
+                color: activeTab === tab ? 'var(--ink)' : 'var(--ink3)',
+                boxShadow: activeTab === tab ? '0 1px 4px rgba(0,0,0,.08)' : 'none',
+                transition: 'all .15s',
+              }}
+            >
+              {tab === 'cities' ? 'Cities' : 'Map'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Trip sidebar */}
-      {tripEvents.length > 0 && (
-        <div style={{ background: 'var(--white)', border: '1.5px solid var(--border)', borderRadius: 16, padding: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <h2 style={{ fontSize: 18, fontFamily: 'var(--font-serif)', fontWeight: 400 }}>
-              Your trip · {tripEvents.length} {tripEvents.length === 1 ? 'event' : 'events'}
-            </h2>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                onClick={handleSaveTrip}
-                disabled={savingTrip}
-                style={{ background: 'none', color: 'var(--ink)', border: '1.5px solid var(--border)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: savingTrip ? 'default' : 'pointer', opacity: savingTrip ? 0.6 : 1 }}
-              >
-                {savingTrip ? 'Saving…' : '♡ Save trip'}
-              </button>
-              <button
-                onClick={handlePlanWithFriends}
-                disabled={planningWithFriends}
-                style={{ background: 'none', color: 'var(--ink)', border: '1.5px solid var(--border)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: planningWithFriends ? 'default' : 'pointer', opacity: planningWithFriends ? 0.6 : 1 }}
-              >
-                {planningWithFriends ? 'Creating…' : '👥 Plan with friends'}
-              </button>
-              <button
-                onClick={shareTrip}
-                style={{ background: 'var(--green)', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-              >
-                Share this trip
-              </button>
-            </div>
+      {/* ── CITIES TAB ── always in DOM, hidden via display:none when inactive */}
+      <div style={{ display: activeTab === 'cities' ? '' : 'none', maxWidth: 1200, margin: '0 auto', padding: '24px 24px 80px' }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 'clamp(24px,4vw,36px)', fontFamily: 'var(--font-serif)', fontWeight: 400, marginBottom: 4 }}>
+            Plan a trip
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--ink3)' }}>
+            Browse events across Norway. Build your trip around them.
+          </p>
+        </div>
+
+        {/* Search bar */}
+        <div style={{ background: 'var(--white)', border: '1.5px solid var(--border)', borderRadius: 16, display: 'flex', alignItems: 'stretch', overflow: 'hidden', boxShadow: 'var(--shadow-md)', marginBottom: 12 }}>
+          <div style={{ flex: 2, padding: '12px 16px', borderRight: '1px solid var(--border)' }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>City</label>
+            <input
+              type="text"
+              placeholder="Oslo, Bergen, Tromsø..."
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}
+            />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {tripEvents.map(event => (
-              <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--stone)', borderRadius: 10 }}>
+          <div style={{ flex: 1.5, padding: '12px 16px', borderRight: '1px solid var(--border)', opacity: dateMode === 'weekend' ? 0.4 : 1 }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>From</label>
+            <input
+              type="date"
+              value={dateMode === 'weekend' ? toDateInput(weekend.sat) : fromDate}
+              onChange={e => setFromDate(e.target.value)}
+              disabled={dateMode === 'weekend'}
+              style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)', cursor: dateMode === 'weekend' ? 'not-allowed' : 'text' }}
+            />
+          </div>
+          <div style={{ flex: 1.5, padding: '12px 16px', borderRight: '1px solid var(--border)', opacity: dateMode !== 'range' ? 0.4 : 1 }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>To</label>
+            <input
+              type="date"
+              value={dateMode === 'weekend' ? toDateInput(weekend.sun) : toDate}
+              onChange={e => setToDate(e.target.value)}
+              disabled={dateMode !== 'range'}
+              style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)', cursor: dateMode !== 'range' ? 'not-allowed' : 'text' }}
+            />
+          </div>
+          <div style={{ flex: 1.5, padding: '12px 16px', borderRight: '1px solid var(--border)' }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>Category</label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}
+            >
+              <option value="">All events</option>
+              {CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.label}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={doSearch}
+            style={{ background: 'var(--green)', color: '#fff', border: 'none', padding: '0 28px', fontSize: 14, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}
+          >
+            Search
+          </button>
+        </div>
+
+        {/* Date mode toggle */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+          {(['single', 'range', 'weekend'] as DateMode[]).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setDateMode(mode)}
+              style={{
+                padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                border: '1px solid var(--border)',
+                background: dateMode === mode ? 'var(--ink)' : 'var(--white)',
+                color: dateMode === mode ? '#fff' : 'var(--ink2)',
+              }}
+            >
+              {mode === 'single' ? 'Single date' : mode === 'range' ? 'Date range' : 'This weekend'}
+            </button>
+          ))}
+        </div>
+
+        {/* Map + sidebar */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, marginBottom: 28 }}>
+          <div
+            ref={mapDivRef}
+            style={{ height: '60vh', minHeight: 400, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--stone)' }}
+          />
+
+          <div style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            {/* Active venue filter header */}
+            {activeVenueGroup && (
+              <div style={{ background: '#EAF3DE', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{event.title}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{activeVenueGroup.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                    {fmtDate(event)} · {priceText(event)}
+                    {activeVenueGroup.events.length} event{activeVenueGroup.events.length !== 1 ? 's' : ''}
                   </div>
                 </div>
                 <button
-                  onClick={() => removeFromTrip(event.id)}
-                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '50%', width: 28, height: 28, fontSize: 18, cursor: 'pointer', color: 'var(--ink3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1 }}
+                  onClick={() => setActiveVenueKey(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--ink3)', lineHeight: 1, padding: '0 2px' }}
                 >
                   ×
                 </button>
               </div>
-            ))}
+            )}
+
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>Loading events...</div>
+            ) : zoom < 10 ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
+                Zoom in to see events in an area.
+              </div>
+            ) : sidebarEvents.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 14 }}>No events found in this area.</div>
+            ) : (
+              sidebarEvents.map(event => (
+                <div
+                  key={event.id}
+                  onClick={() => setSelectedEvent(event)}
+                  style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  {event.cover_image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={event.cover_image_url}
+                      alt={event.title}
+                      style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
+                    />
+                  )}
+                  <div style={{ padding: 14 }}>
+                    <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
+                      {event.category_names?.[0] ?? ''}
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, lineHeight: 1.3 }}>{event.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                      {fmtDate(event)}{event.venue_city ? ` · ${event.venue_city}` : ''}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 3, fontWeight: 500 }}>
+                      {priceText(event)}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
+        </div>
+
+        {/* Trip sidebar */}
+        {tripEvents.length > 0 && (
+          <div style={{ background: 'var(--white)', border: '1.5px solid var(--border)', borderRadius: 16, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontFamily: 'var(--font-serif)', fontWeight: 400 }}>
+                Your trip · {tripEvents.length} {tripEvents.length === 1 ? 'event' : 'events'}
+              </h2>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleSaveTrip}
+                  disabled={savingTrip}
+                  style={{ background: 'none', color: 'var(--ink)', border: '1.5px solid var(--border)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: savingTrip ? 'default' : 'pointer', opacity: savingTrip ? 0.6 : 1 }}
+                >
+                  {savingTrip ? 'Saving…' : '♡ Save trip'}
+                </button>
+                <button
+                  onClick={handlePlanWithFriends}
+                  disabled={planningWithFriends}
+                  style={{ background: 'none', color: 'var(--ink)', border: '1.5px solid var(--border)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: planningWithFriends ? 'default' : 'pointer', opacity: planningWithFriends ? 0.6 : 1 }}
+                >
+                  {planningWithFriends ? 'Creating…' : '👥 Plan with friends'}
+                </button>
+                <button
+                  onClick={shareTrip}
+                  style={{ background: 'var(--green)', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                >
+                  Share this trip
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {tripEvents.map(event => (
+                <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--stone)', borderRadius: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{event.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                      {fmtDate(event)} · {priceText(event)}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeFromTrip(event.id)}
+                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '50%', width: 28, height: 28, fontSize: 18, cursor: 'pointer', color: 'var(--ink3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── MAP TAB ── rendered on first activation, hidden when inactive */}
+      {mapTabShown && (
+        <div style={{ display: activeTab === 'map' ? '' : 'none', position: 'relative' }}>
+          {/* Spinner overlay while map loads */}
+          {mapTabLoading && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 10,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--stone)',
+              height: 'calc(100vh - 60px - 56px)',
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                border: '3px solid var(--border)', borderTopColor: 'var(--green)',
+                animation: 'mapTabSpin .8s linear infinite',
+                marginBottom: 12,
+              }} />
+              <span style={{ fontSize: 14, color: 'var(--ink3)' }}>Loading map…</span>
+            </div>
+          )}
+
+          {/* Map container */}
+          <div
+            ref={mapTabDivRef}
+            style={{ width: '100%', height: 'calc(100vh - 60px - 56px)' }}
+          />
+
+          {/* Bottom sheet */}
+          {selectedMapEvent && (
+            <div
+              onClick={e => { if (e.target === e.currentTarget) setSelectedMapEvent(null) }}
+              style={{ position: 'absolute', inset: 0, zIndex: 400, background: 'rgba(0,0,0,.2)' }}
+            >
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                height: '40%',
+                background: 'var(--white)',
+                borderRadius: '20px 20px 0 0',
+                padding: '20px 24px 32px',
+                boxShadow: '0 -4px 24px rgba(0,0,0,.12)',
+                animation: 'slideUpSheet .25s ease-out',
+                overflowY: 'auto',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <h2 style={{ fontSize: 18, fontFamily: 'var(--font-serif)', fontWeight: 400, lineHeight: 1.3, paddingRight: 8, margin: 0 }}>
+                    {selectedMapEvent.title}
+                  </h2>
+                  <button
+                    onClick={() => setSelectedMapEvent(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--ink3)', flexShrink: 0, lineHeight: 1, padding: '0 2px' }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 6 }}>
+                  {new Date(selectedMapEvent.starts_at).toLocaleDateString('en-GB', {
+                    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+                  })}
+                  {selectedMapEvent.venues?.name ? ` · ${selectedMapEvent.venues.name}` : ''}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: selectedMapEvent.is_free ? 'var(--green)' : 'var(--ink)', marginBottom: 18 }}>
+                  {selectedMapEvent.is_free
+                    ? 'Free'
+                    : selectedMapEvent.price_from
+                    ? `from ${selectedMapEvent.price_from} kr`
+                    : 'See organiser'}
+                </div>
+                <a
+                  href={`/events/${selectedMapEvent.id}`}
+                  style={{
+                    display: 'block', background: 'var(--green)', color: '#fff',
+                    borderRadius: 10, padding: '12px 0', fontSize: 14, fontWeight: 500,
+                    textDecoration: 'none', textAlign: 'center',
+                  }}
+                >
+                  View event →
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Event popup */}
+      {/* Event popup (Cities tab) */}
       {selectedEvent && (
         <div
           onClick={e => { if (e.target === e.currentTarget) setSelectedEvent(null) }}
@@ -858,6 +1112,6 @@ export default function TripPage() {
           {toast}
         </div>
       )}
-    </div>
+    </>
   )
 }
