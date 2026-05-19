@@ -1,5 +1,6 @@
 'use client'
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 import { createClient } from '@/lib/supabase/client'
@@ -322,13 +323,13 @@ function MapPageContent() {
           borderBottom: '1px solid var(--border)',
           background: 'var(--white)',
         }}>
-          <button
-            onClick={() => router.push('/trip')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px 4px 0', fontSize: 20, color: 'var(--ink)', lineHeight: 1, flexShrink: 0 }}
+          <Link
+            href="/trip"
+            style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0', fontSize: 20, color: 'var(--ink)', lineHeight: 1, flexShrink: 0, textDecoration: 'none' }}
             aria-label="Back to trip planner"
           >
             ←
-          </button>
+          </Link>
           <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {pageTitle}
           </span>
