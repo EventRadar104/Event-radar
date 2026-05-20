@@ -207,15 +207,33 @@ export default function MapContent() {
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     if (!key || !mapDivRef.current) return
-    const center = cityFilter ? (CITY_COORDS[cityFilter] ?? OSLO) : OSLO
-    setOptions({ key, v: 'weekly' })
-    importLibrary('maps').then(() => {
+
+    async function initMap() {
+      let center: { lat: number; lng: number } = OSLO
+      if (cityFilter) {
+        if (CITY_COORDS[cityFilter]) {
+          center = CITY_COORDS[cityFilter]
+        } else {
+          try {
+            const res = await fetch(`/api/geo/coords?city=${encodeURIComponent(cityFilter)}`)
+            if (res.ok) {
+              const data = await res.json()
+              if (typeof data.lat === 'number' && typeof data.lng === 'number') {
+                center = { lat: data.lat, lng: data.lng }
+              }
+            }
+          } catch { /* fall back to OSLO */ }
+        }
+      }
+
+      setOptions({ key, v: 'weekly' })
+      await importLibrary('maps')
       if (!mapDivRef.current) return
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const g = (window as any).google
       mapRef.current = new g.maps.Map(mapDivRef.current, {
         center,
-        zoom: 12,
+        zoom: cityFilter ? 12 : 6,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
@@ -223,7 +241,9 @@ export default function MapContent() {
       })
       g.maps.event.addListener(mapRef.current, 'click', () => setActiveVenueId(null))
       setMapReady(true)
-    })
+    }
+
+    initMap()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

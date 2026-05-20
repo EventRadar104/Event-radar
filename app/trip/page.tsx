@@ -151,7 +151,7 @@ export default function TripPage() {
 
           {showCustomCity && (
             <button
-              onClick={() => router.push(`/map?city=${encodeURIComponent(citySearch.trim())}`)}
+              onClick={() => { setSelectedCity(citySearch.trim()); setCitySearch('') }}
               style={{
                 marginTop: 10,
                 width: '100%',
@@ -160,14 +160,42 @@ export default function TripPage() {
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: 'pointer',
-                border: '1.5px dashed var(--green)',
+                border: '1.5px solid var(--border)',
+                background: 'var(--white)',
+                color: 'var(--ink)',
+                textAlign: 'left',
+                transition: 'all .15s',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>📍</span>
+              {citySearch.trim()}
+            </button>
+          )}
+          {selectedCity && !CITIES.includes(selectedCity) && (
+            <button
+              onClick={() => setSelectedCity(null)}
+              style={{
+                marginTop: 10,
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: '1.5px solid var(--green)',
                 background: 'var(--green-lt)',
                 color: 'var(--green)',
                 textAlign: 'left',
                 transition: 'all .15s',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               }}
             >
-              Search events in {citySearch.trim()} →
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>📍</span>
+                {selectedCity}
+              </span>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>×</span>
             </button>
           )}
         </div>
