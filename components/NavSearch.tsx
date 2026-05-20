@@ -27,6 +27,8 @@ export function NavSearch() {
   const [value, setValue] = useState('')
   const [suggestions, setSuggestions] = useState<Suggestions>({ events: [], venues: [], cities: [] })
   const [open, setOpen] = useState(false)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -92,6 +94,40 @@ export function NavSearch() {
     router.push(`/search?q=${encodeURIComponent(name)}`)
   }
 
+  async function handleGeoClick() {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation not supported')
+      return
+    }
+    setGeoLoading(true)
+    setGeoError(null)
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        try {
+          const res = await fetch('/api/geo/city', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          })
+          const data = await res.json()
+          if (data.city) {
+            router.push(`/search?city=${encodeURIComponent(data.city)}`)
+          } else {
+            setGeoError('Could not detect city')
+          }
+        } catch {
+          setGeoError('Location lookup failed')
+        } finally {
+          setGeoLoading(false)
+        }
+      },
+      () => {
+        setGeoError('Location access denied')
+        setGeoLoading(false)
+      }
+    )
+  }
+
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   }
@@ -124,12 +160,33 @@ export function NavSearch() {
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--ink)' }}
         />
         <button
+          type="button"
+          onClick={handleGeoClick}
+          title="Find events near me"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', color: geoLoading ? 'var(--green)' : 'var(--ink3)', flexShrink: 0 }}
+        >
+          {geoLoading ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </svg>
+          )}
+        </button>
+        <button
           onClick={handleSearch}
           style={{ background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 30, padding: '5px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}
         >
           Search
         </button>
       </div>
+      {geoError && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 11, color: 'var(--red, #c0392b)', marginTop: 4, paddingLeft: 14 }}>
+          {geoError}
+        </div>
+      )}
 
       {showDropdown && (
         <div style={{
@@ -203,6 +260,7 @@ export function NavSearch() {
           <div style={{ height: 6 }} />
         </div>
       )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

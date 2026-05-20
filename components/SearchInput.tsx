@@ -32,6 +32,8 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
   const [value, setValue] = useState(defaultValue)
   const [suggestions, setSuggestions] = useState<Suggestions>({ events: [], venues: [], cities: [] })
   const [open, setOpen] = useState(false)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -100,6 +102,45 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
     router.push(`/search?${p.toString()}`)
   }
 
+  async function handleGeoClick() {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation not supported')
+      return
+    }
+    setGeoLoading(true)
+    setGeoError(null)
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        try {
+          const res = await fetch('/api/geo/city', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          })
+          const data = await res.json()
+          if (data.city) {
+            const p = new URLSearchParams()
+            p.set('city', data.city)
+            for (const [k, v] of Object.entries(hiddenParams)) {
+              if (k !== 'city' && v) p.set(k, v)
+            }
+            router.push(`/search?${p.toString()}`)
+          } else {
+            setGeoError('Could not detect city')
+          }
+        } catch {
+          setGeoError('Location lookup failed')
+        } finally {
+          setGeoLoading(false)
+        }
+      },
+      () => {
+        setGeoError('Location access denied')
+        setGeoLoading(false)
+      }
+    )
+  }
+
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   }
@@ -132,6 +173,22 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, color: 'var(--ink)' }}
           />
           <button
+            type="button"
+            onClick={handleGeoClick}
+            title="Find events near me"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', color: geoLoading ? 'var(--green)' : 'var(--ink3)', flexShrink: 0 }}
+          >
+            {geoLoading ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+              </svg>
+            )}
+          </button>
+          <button
             type="submit"
             style={{ background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 30, padding: '8px 20px', fontSize: 14, fontWeight: 500, flexShrink: 0, cursor: 'pointer' }}
           >
@@ -139,6 +196,11 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
           </button>
         </div>
       </form>
+      {geoError && (
+        <div style={{ fontSize: 12, color: 'var(--red, #c0392b)', marginTop: 6, paddingLeft: 4 }}>
+          {geoError}
+        </div>
+      )}
 
       {showDropdown && (
         <div style={{
@@ -186,6 +248,7 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
           <div style={{ height: 6 }} />
         </div>
       )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
