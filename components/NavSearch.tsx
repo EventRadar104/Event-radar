@@ -19,23 +19,26 @@ interface SuggestionVenue {
 interface Suggestions {
   events: SuggestionEvent[]
   venues: SuggestionVenue[]
+  cities: string[]
 }
 
 export function NavSearch() {
   const router = useRouter()
   const [value, setValue] = useState('')
-  const [suggestions, setSuggestions] = useState<Suggestions>({ events: [], venues: [] })
+  const [suggestions, setSuggestions] = useState<Suggestions>({ events: [], venues: [], cities: [] })
   const [open, setOpen] = useState(false)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const hasSuggestions = suggestions.events.length > 0 || suggestions.venues.length > 0
+  const hasSuggestions = suggestions.events.length > 0 || suggestions.venues.length > 0 || suggestions.cities.length > 0
   const showDropdown = open && hasSuggestions
 
   const fetchSuggestions = useCallback((q: string) => {
     if (timerRef.current) clearTimeout(timerRef.current)
     if (q.trim().length < 2) {
-      setSuggestions({ events: [], venues: [] })
+      setSuggestions({ events: [], venues: [], cities: [] })
       setOpen(false)
       return
     }
@@ -44,7 +47,7 @@ export function NavSearch() {
         const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(q)}`)
         const data: Suggestions = await res.json()
         setSuggestions(data)
-        setOpen(data.events.length > 0 || data.venues.length > 0)
+        setOpen(data.events.length > 0 || data.venues.length > 0 || (data.cities?.length ?? 0) > 0)
       } catch { /* non-critical */ }
     }, 300)
   }, [])
@@ -85,6 +88,46 @@ export function NavSearch() {
     router.push(`/search?q=${encodeURIComponent(name)}`)
   }
 
+  function handleCityClick(city: string) {
+    setValue('')
+    setOpen(false)
+    router.push(`/search?city=${encodeURIComponent(city)}`)
+  }
+
+  async function handleGeoClick() {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation not supported')
+      return
+    }
+    setGeoLoading(true)
+    setGeoError(null)
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        try {
+          const res = await fetch('/api/geo/city', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          })
+          const data = await res.json()
+          if (data.city) {
+            router.push(`/search?city=${encodeURIComponent(data.city)}`)
+          } else {
+            setGeoError('Could not detect city')
+          }
+        } catch {
+          setGeoError('Location lookup failed')
+        } finally {
+          setGeoLoading(false)
+        }
+      },
+      () => {
+        setGeoError('Location access denied')
+        setGeoLoading(false)
+      }
+    )
+  }
+
   function formatDate(iso: string) {
     return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   }
@@ -117,12 +160,34 @@ export function NavSearch() {
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--ink)' }}
         />
         <button
+          type="button"
+          onClick={handleGeoClick}
+          title="Find events near me"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', color: geoLoading ? 'var(--green)' : 'var(--ink3)', flexShrink: 0 }}
+        >
+          {geoLoading ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+              <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" strokeOpacity="0"/>
+            </svg>
+          )}
+        </button>
+        <button
           onClick={handleSearch}
           style={{ background: 'var(--ink)', color: '#fff', border: 'none', borderRadius: 30, padding: '5px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}
         >
           Search
         </button>
       </div>
+      {geoError && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, fontSize: 11, color: 'var(--red, #c0392b)', marginTop: 4, paddingLeft: 14 }}>
+          {geoError}
+        </div>
+      )}
 
       {showDropdown && (
         <div style={{
@@ -173,9 +238,32 @@ export function NavSearch() {
               ))}
             </div>
           )}
+          {(suggestions.cities?.length ?? 0) > 0 && (
+            <div style={{ borderTop: (suggestions.events.length > 0 || suggestions.venues.length > 0) ? '1px solid var(--border2)' : 'none' }}>
+              <div style={{ padding: '8px 14px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                Cities
+              </div>
+              {suggestions.cities.map(city => (
+                <button
+                  key={city}
+                  type="button"
+                  onMouseDown={() => handleCityClick(city)}
+                  style={{ width: '100%', textAlign: 'left', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--stone)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="2" style={{ flexShrink: 0 }}>
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{city}</div>
+                </button>
+              ))}
+            </div>
+          )}
           <div style={{ height: 6 }} />
         </div>
       )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
