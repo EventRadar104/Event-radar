@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 import { createClient } from '@/lib/supabase/client'
 import type { EventWithDetails } from '@/lib/types'
@@ -16,6 +16,9 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
 }
 
 const OSLO = { lat: 59.9139, lng: 10.7522 }
+
+// How many px of the sheet peek above the bottom when collapsed
+const PEEK_PX = 180
 
 interface VenueGroup {
   venueId: string
@@ -122,19 +125,17 @@ function makeVenueMarkerIcon(count: number, active: boolean, g: any) {
 }
 
 export default function MapContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [cityFilter, setCityFilter]   = useState(searchParams.get('city')     ?? '')
-  const [whenFilter, setWhenFilter]   = useState(searchParams.get('when')     ?? '')
-  const [dateFilter, setDateFilter]   = useState(searchParams.get('date')     ?? '')
-  const [catFilter,  setCatFilter]    = useState(searchParams.get('category') ?? '')
+  const [cityFilter, setCityFilter] = useState(searchParams.get('city')     ?? '')
+  const [whenFilter, setWhenFilter] = useState(searchParams.get('when')     ?? '')
+  const [dateFilter, setDateFilter] = useState(searchParams.get('date')     ?? '')
+  const [catFilter,  setCatFilter]  = useState(searchParams.get('category') ?? '')
 
   const mapDivRef  = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef     = useRef<any>(null)
   const markersRef = useRef<Array<{ group: VenueGroup; marker: any }>>([]) // eslint-disable-line @typescript-eslint/no-explicit-any
-  const listRef    = useRef<HTMLDivElement>(null)
 
   const [allEvents,     setAllEvents]     = useState<EventWithDetails[]>([])
   const [loading,       setLoading]       = useState(true)
@@ -257,24 +258,9 @@ export default function MapContent() {
     })
   }, [activeVenueId])
 
-  function handleListEventClick(event: EventWithDetails) {
-    const venueId = event.venue_id
-    if (!venueId) return
-    setActiveVenueId(venueId)
-    if (mapRef.current && event.venue_lat != null && event.venue_lng != null) {
-      mapRef.current.panTo({ lat: event.venue_lat, lng: event.venue_lng })
-    }
-  }
-
-  const hasEmpty = !loading && filteredEvents.length === 0
-
   return (
     <>
       <style>{`
-        @keyframes mapSlideUp {
-          from { transform: translateY(100%); }
-          to   { transform: translateY(0); }
-        }
         .map-page-outer {
           display: flex;
           flex-direction: column;
@@ -283,7 +269,29 @@ export default function MapContent() {
           background: var(--bg);
         }
         @media (max-width: 640px) {
-          .map-page-outer { height: calc(100dvh - 60px - 70px - env(safe-area-inset-bottom, 0px)); }
+          .map-page-outer {
+            height: calc(100dvh - 60px - 70px - env(safe-area-inset-bottom, 0px));
+          }
+        }
+        .venue-sheet {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: calc(100dvh - 60px);
+          z-index: 250;
+          display: flex;
+          flex-direction: column;
+          background: var(--white);
+          border-radius: 16px 16px 0 0;
+          box-shadow: 0 -4px 32px rgba(0,0,0,.14);
+          overscroll-behavior: none;
+        }
+        @media (max-width: 640px) {
+          .venue-sheet {
+            bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+            height: calc(100dvh - 60px - 70px - env(safe-area-inset-bottom, 0px));
+          }
         }
       `}</style>
 
@@ -344,8 +352,8 @@ export default function MapContent() {
           </div>
         )}
 
-        {/* ── Map area (50vh) ───────────────────────────────────────── */}
-        <div style={{ position: 'relative', height: '50vh', minHeight: 280, flexShrink: 0 }}>
+        {/* ── Map (fills all remaining height) ─────────────────────── */}
+        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
           {loading && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 5,
@@ -361,162 +369,292 @@ export default function MapContent() {
           )}
           <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
         </div>
+      </div>
 
-        {/* ── Content area (remaining height) ──────────────────────── */}
-        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+      {/* ── Venue bottom sheet (fixed overlay, shown on pin tap) ───── */}
+      {activeVenueGroup && (
+        <VenueBottomSheet
+          group={activeVenueGroup}
+          onClose={() => setActiveVenueId(null)}
+        />
+      )}
+    </>
+  )
+}
 
-          {/* Flat event list (default state) */}
-          <div
-            ref={listRef}
-            style={{ height: '100%', overflowY: 'auto', background: 'var(--white)' }}
-          >
-            {loading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 8, background: '#F5F3EE', flexShrink: 0, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <div style={{ height: 14, borderRadius: 4, background: '#F5F3EE', width: '70%', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                      <div style={{ height: 11, borderRadius: 4, background: '#F5F3EE', width: '50%', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : hasEmpty ? (
-              <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--ink3)', fontSize: 14 }}>
-                No events found — try adjusting your filters
-              </div>
-            ) : (
-              filteredEvents.map(event => (
-                <div
-                  key={event.id}
-                  onClick={() => handleListEventClick(event)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 16px',
-                    borderBottom: '1px solid var(--border)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {/* Thumbnail */}
-                  <div
-                    className={!event.cover_image_url ? categoryPhClass(event.category_slugs) : ''}
-                    style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}
-                  >
-                    {event.cover_image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={event.cover_image_url}
-                        alt={event.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                      />
-                    )}
-                  </div>
-                  {/* Details */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
-                      {event.title}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {[event.venue_name, fmtShortDate(event.starts_at)].filter(Boolean).join(' · ')}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: event.is_free ? 'var(--green)' : 'var(--ink2)' }}>
-                      {fmtPrice(event)}
-                    </div>
-                  </div>
-                  {/* Arrow */}
-                  <span style={{ color: 'var(--ink4)', fontSize: 18, flexShrink: 0 }}>›</span>
-                </div>
-              ))
-            )}
+// ─── Draggable bottom sheet ────────────────────────────────────────────────
+
+function VenueBottomSheet({
+  group,
+  onClose,
+}: {
+  group: VenueGroup
+  onClose: () => void
+}) {
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const listRef  = useRef<HTMLDivElement>(null)
+
+  // 0 = collapsed, 1 = half, 2 = full
+  const [snapIdx, setSnapIdx]         = useState<0 | 1 | 2>(0)
+  const [liveTranslate, setLiveTrans] = useState<number | null>(null)
+  // Enter animation: start off-screen, transition to collapsed
+  const [entered, setEntered]         = useState(false)
+
+  // Drag state kept in refs to avoid stale closure issues
+  const isDragging = useRef(false)
+  const startY     = useRef(0)
+  const startT     = useRef(0)   // translateY at drag start
+  const liveT      = useRef(0)   // current translateY during drag (always fresh)
+
+  // Trigger enter animation after first paint
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setEntered(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  // Reset to collapsed whenever the venue changes
+  useEffect(() => {
+    setSnapIdx(0)
+    setLiveTrans(null)
+  }, [group.venueId])
+
+  function shH(): number {
+    return sheetRef.current?.offsetHeight ?? window.innerHeight - 60
+  }
+
+  function snapPx(idx: 0 | 1 | 2): number {
+    const h = shH()
+    if (idx === 2) return 0
+    if (idx === 1) return h * 0.5
+    return h - PEEK_PX
+  }
+
+  function nearestSnap(t: number): 0 | 1 | 2 {
+    const h = shH()
+    const pts: Array<[number, 0 | 1 | 2]> = [
+      [h - PEEK_PX, 0],
+      [h * 0.5,     1],
+      [0,           2],
+    ]
+    let best: 0 | 1 | 2 = 0
+    let bestDist = Infinity
+    for (const [pt, idx] of pts) {
+      const d = Math.abs(t - pt)
+      if (d < bestDist) { bestDist = d; best = idx }
+    }
+    return best
+  }
+
+  function onDragStart(e: React.PointerEvent) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    isDragging.current = true
+    startY.current = e.clientY
+    startT.current = snapPx(snapIdx)
+    liveT.current  = startT.current
+  }
+
+  function onDragMove(e: React.PointerEvent) {
+    if (!isDragging.current) return
+    const h = shH()
+    const next = Math.max(0, Math.min(h - PEEK_PX, startT.current + (e.clientY - startY.current)))
+    liveT.current = next
+    setLiveTrans(next)
+  }
+
+  function onDragEnd() {
+    if (!isDragging.current) return
+    isDragging.current = false
+    const nearest = nearestSnap(liveT.current)
+    setSnapIdx(nearest)
+    setLiveTrans(null)
+  }
+
+  const dragHandlers = {
+    onPointerDown: onDragStart,
+    onPointerMove: onDragMove,
+    onPointerUp:   onDragEnd,
+    onPointerCancel: onDragEnd,
+  } as const
+
+  // CSS snap values — CSS calc avoids needing to know the pixel height
+  const snapCSS: Record<0 | 1 | 2, string> = {
+    0: `translateY(calc(100% - ${PEEK_PX}px))`,
+    1: 'translateY(50%)',
+    2: 'translateY(0%)',
+  }
+
+  const transform = !entered
+    ? 'translateY(100%)'               // off-screen before enter
+    : liveTranslate !== null
+      ? `translateY(${liveTranslate}px)` // live drag
+      : snapCSS[snapIdx]                 // snapped
+
+  const useTransition = liveTranslate === null
+
+  return (
+    <div
+      ref={sheetRef}
+      className="venue-sheet"
+      style={{
+        transform,
+        transition: useTransition ? 'transform 0.32s cubic-bezier(.32,.72,0,1)' : 'none',
+        willChange: 'transform',
+      }}
+    >
+      {/* ── Drag handle ───────────────────────────────────────────── */}
+      <div
+        {...dragHandlers}
+        style={{
+          flexShrink: 0,
+          padding: '10px 0 4px',
+          cursor: 'grab',
+          touchAction: 'none',
+          userSelect: 'none',
+        }}
+      >
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)', margin: '0 auto' }} />
+      </div>
+
+      {/* ── Header ────────────────────────────────────────────────── */}
+      <div
+        {...dragHandlers}
+        style={{
+          flexShrink: 0,
+          cursor: 'grab',
+          touchAction: 'none',
+          userSelect: 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '4px 16px 12px',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>
+            {group.events.length} event{group.events.length !== 1 ? 's' : ''} here
           </div>
-
-          {/* Venue bottom sheet (shown when a pin or list item is tapped) */}
-          {activeVenueGroup && (
-            <div
-              onClick={e => { if (e.target === e.currentTarget) setActiveVenueId(null) }}
-              style={{ position: 'absolute', inset: 0, zIndex: 100 }}
-            >
-              <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                maxHeight: '100%',
-                display: 'flex', flexDirection: 'column',
-                background: 'var(--white)',
-                borderRadius: '16px 16px 0 0',
-                boxShadow: '0 -4px 24px rgba(0,0,0,.12)',
-                animation: 'mapSlideUp .22s ease-out',
-              }}>
-                {/* Drag handle */}
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
-                  <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
-                </div>
-                {/* Sheet header */}
-                <div style={{
-                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                  padding: '8px 16px 12px',
-                  borderBottom: '1px solid var(--border)',
-                  flexShrink: 0,
-                }}>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 2 }}>
-                      {activeVenueGroup.venueName ?? 'Venue'}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                      {activeVenueGroup.events.length} event{activeVenueGroup.events.length !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActiveVenueId(null)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: 'var(--ink3)', lineHeight: 1, padding: '0 2px', marginTop: 2 }}
-                    aria-label="Close"
-                  >
-                    ×
-                  </button>
-                </div>
-                {/* Sheet event list */}
-                <div style={{ overflowY: 'auto', flex: 1 }}>
-                  {activeVenueGroup.events.map(event => (
-                    <a
-                      key={event.id}
-                      href={`/events/${event.slug ?? event.id}`}
-                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', textDecoration: 'none', color: 'inherit' }}
-                    >
-                      {/* Thumbnail */}
-                      <div
-                        className={!event.cover_image_url ? categoryPhClass(event.category_slugs) : ''}
-                        style={{ width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}
-                      >
-                        {event.cover_image_url && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={event.cover_image_url}
-                            alt={event.title}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                          />
-                        )}
-                      </div>
-                      {/* Details */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
-                          {event.title}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
-                          {fmtShortDate(event.starts_at)}
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 500, color: event.is_free ? 'var(--green)' : 'var(--ink2)' }}>
-                          {fmtPrice(event)}
-                        </div>
-                      </div>
-                      {/* Arrow */}
-                      <span style={{ color: 'var(--ink4)', fontSize: 18, flexShrink: 0 }}>›</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
+          {group.venueName && (
+            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>
+              {group.venueName}
             </div>
           )}
         </div>
+        {/* ✕ only visible at full snap */}
+        {snapIdx === 2 && liveTranslate === null && (
+          <button
+            onPointerDown={e => e.stopPropagation()}
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: 'var(--stone)',
+              border: 'none',
+              borderRadius: '50%',
+              width: 32, height: 32,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: 16,
+              color: 'var(--ink)',
+              flexShrink: 0,
+            }}
+          >
+            ✕
+          </button>
+        )}
       </div>
-    </>
+
+      {/* ── "Drag up" hint — collapsed only ──────────────────────── */}
+      {snapIdx === 0 && liveTranslate === null && (
+        <div style={{
+          flexShrink: 0,
+          textAlign: 'center',
+          padding: '5px 16px',
+          fontSize: 11,
+          color: 'var(--ink3)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}>
+          Drag up to see all ↑
+        </div>
+      )}
+
+      {/* ── Event list ────────────────────────────────────────────── */}
+      <div
+        ref={listRef}
+        style={{
+          flex: 1,
+          overflowY: snapIdx === 0 ? 'hidden' : 'auto',
+          // allow native scroll when expanded; block it when collapsed so
+          // the user can drag the sheet from the list area at scrollTop 0
+          touchAction: snapIdx === 0 ? 'none' : 'pan-y',
+          overscrollBehavior: 'contain',
+        }}
+        // When list is at top and user drags down, drag the sheet instead of
+        // fighting the native scroll
+        onPointerDown={e => {
+          if ((listRef.current?.scrollTop ?? 0) === 0 && snapIdx !== 0) {
+            onDragStart(e)
+          }
+        }}
+        onPointerMove={e => {
+          if (isDragging.current) onDragMove(e)
+        }}
+        onPointerUp={onDragEnd}
+        onPointerCancel={onDragEnd}
+      >
+        {group.events.map((event, idx) => {
+          // Collapsed: show only the first card as a preview
+          if (snapIdx === 0 && idx >= 1) return null
+          const full = snapIdx === 2
+          return (
+            <a
+              key={event.id}
+              href={`/events/${event.slug ?? event.id}`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: full ? '14px 16px' : '12px 16px',
+                borderBottom: '1px solid var(--border)',
+                textDecoration: 'none', color: 'inherit',
+              }}
+            >
+              <div
+                className={!event.cover_image_url ? categoryPhClass(event.category_slugs) : ''}
+                style={{
+                  width: full ? 52 : 44, height: full ? 52 : 44,
+                  borderRadius: 10, overflow: 'hidden', flexShrink: 0,
+                }}
+              >
+                {event.cover_image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={event.cover_image_url}
+                    alt={event.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
+                  {event.title}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink3)' }}>
+                  {fmtShortDate(event.starts_at)}
+                </div>
+                {/* Full snap: show venue + price */}
+                {full && (
+                  <>
+                    {event.venue_name && (
+                      <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{event.venue_name}</div>
+                    )}
+                    <div style={{ fontSize: 12, fontWeight: 500, marginTop: 1, color: event.is_free ? 'var(--green)' : 'var(--ink2)' }}>
+                      {fmtPrice(event)}
+                    </div>
+                  </>
+                )}
+              </div>
+              <span style={{ color: 'var(--ink4)', fontSize: 18, flexShrink: 0 }}>›</span>
+            </a>
+          )
+        })}
+      </div>
+    </div>
   )
 }
