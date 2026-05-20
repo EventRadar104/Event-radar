@@ -36,7 +36,7 @@ export function NavSearch() {
   const fetchSuggestions = useCallback((q: string) => {
     if (timerRef.current) clearTimeout(timerRef.current)
     if (q.trim().length < 2) {
-      setSuggestions({ events: [], venues: [] })
+      setSuggestions({ events: [], venues: [], cities: [] })
       setOpen(false)
       return
     }
