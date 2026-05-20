@@ -30,7 +30,22 @@ export async function searchEvents(params: SearchParams = {}) {
       console.error('searchEvents error:', error.message)
       return [] as EventWithDetails[]
     }
-    return (data ?? []) as EventWithDetails[]
+    const results = (data ?? []) as EventWithDetails[]
+
+    // Full-text search doesn't index venue names — fall back to ilike on venue_name
+    if (results.length === 0 && params.q) {
+      const { data: venueData } = await supabase
+        .from('events_with_details')
+        .select('*')
+        .eq('status', 'published')
+        .ilike('venue_name', `%${params.q}%`)
+        .gte('starts_at', params.from || new Date().toISOString())
+        .order('starts_at', { ascending: true })
+        .limit(50)
+      return (venueData ?? []) as EventWithDetails[]
+    }
+
+    return results
   } catch (e) {
     console.error('searchEvents exception:', e)
     return [] as EventWithDetails[]

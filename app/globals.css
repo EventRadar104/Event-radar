@@ -93,8 +93,8 @@ body {
 @media (max-width: 640px) {
   .mobile-tab-bar { display: block !important; }
 
-  /* Add bottom padding so content never hides behind the tab bar */
-  main { padding-bottom: 70px !important; }
+  /* Add bottom padding so content never hides behind the tab bar + safe area */
+  main { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important; }
 
   /* Nav: hide secondary items */
   .nav-hide-mobile { display: none !important; }
