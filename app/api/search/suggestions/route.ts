@@ -4,13 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   if (q.length < 2) {
-    return NextResponse.json({ events: [], venues: [] })
+    return NextResponse.json({ events: [], venues: [], cities: [] })
   }
 
   const supabase = await createClient()
   const now = new Date().toISOString()
 
-  const [eventsRes, venuesRes] = await Promise.all([
+  const [eventsRes, venuesRes, citiesRes] = await Promise.all([
     supabase
       .from('events_with_details')
       .select('id, title, slug, venue_name, starts_at')
@@ -27,6 +27,14 @@ export async function GET(req: NextRequest) {
       .ilike('venue_name', `%${q}%`)
       .not('venue_name', 'is', null)
       .limit(20),
+    supabase
+      .from('events_with_details')
+      .select('venue_city')
+      .eq('status', 'published')
+      .gt('starts_at', now)
+      .ilike('venue_city', `%${q}%`)
+      .not('venue_city', 'is', null)
+      .limit(20),
   ])
 
   // Deduplicate venues by name
@@ -35,6 +43,12 @@ export async function GET(req: NextRequest) {
     if (row.venue_name && !venueMap.has(row.venue_name)) {
       venueMap.set(row.venue_name, { name: row.venue_name, city: row.venue_city ?? null })
     }
+  }
+
+  // Deduplicate cities
+  const citySet = new Set<string>()
+  for (const row of citiesRes.data ?? []) {
+    if (row.venue_city) citySet.add(row.venue_city)
   }
 
   return NextResponse.json({
@@ -46,5 +60,6 @@ export async function GET(req: NextRequest) {
       starts_at: e.starts_at,
     })),
     venues: [...venueMap.values()].slice(0, 4),
+    cities: [...citySet].slice(0, 4),
   })
 }

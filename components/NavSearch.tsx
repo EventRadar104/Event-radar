@@ -19,17 +19,18 @@ interface SuggestionVenue {
 interface Suggestions {
   events: SuggestionEvent[]
   venues: SuggestionVenue[]
+  cities: string[]
 }
 
 export function NavSearch() {
   const router = useRouter()
   const [value, setValue] = useState('')
-  const [suggestions, setSuggestions] = useState<Suggestions>({ events: [], venues: [] })
+  const [suggestions, setSuggestions] = useState<Suggestions>({ events: [], venues: [], cities: [] })
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const hasSuggestions = suggestions.events.length > 0 || suggestions.venues.length > 0
+  const hasSuggestions = suggestions.cities.length > 0 || suggestions.events.length > 0 || suggestions.venues.length > 0
   const showDropdown = open && hasSuggestions
 
   const fetchSuggestions = useCallback((q: string) => {
@@ -44,7 +45,7 @@ export function NavSearch() {
         const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(q)}`)
         const data: Suggestions = await res.json()
         setSuggestions(data)
-        setOpen(data.events.length > 0 || data.venues.length > 0)
+        setOpen(data.cities.length > 0 || data.events.length > 0 || data.venues.length > 0)
       } catch { /* non-critical */ }
     }, 300)
   }, [])
@@ -77,6 +78,12 @@ export function NavSearch() {
   function handleEventClick(slug: string) {
     setOpen(false)
     router.push(`/events/${slug}`)
+  }
+
+  function handleCityClick(city: string) {
+    setValue('')
+    setOpen(false)
+    router.push(`/search?city=${encodeURIComponent(city)}`)
   }
 
   function handleVenueClick(name: string) {
@@ -131,8 +138,28 @@ export function NavSearch() {
           borderTop: 'none', borderRadius: '0 0 14px 14px',
           boxShadow: 'var(--shadow-md)', zIndex: 300, overflow: 'hidden',
         }}>
-          {suggestions.events.length > 0 && (
+          {suggestions.cities.length > 0 && (
             <div>
+              <div style={{ padding: '8px 14px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                Cities
+              </div>
+              {suggestions.cities.map(city => (
+                <button
+                  key={city}
+                  type="button"
+                  onMouseDown={() => handleCityClick(city)}
+                  style={{ width: '100%', textAlign: 'left', padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--stone)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  <span style={{ fontSize: 13 }}>📍</span>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{city}</div>
+                </button>
+              ))}
+            </div>
+          )}
+          {suggestions.events.length > 0 && (
+            <div style={{ borderTop: suggestions.cities.length > 0 ? '1px solid var(--border2)' : 'none' }}>
               <div style={{ padding: '8px 14px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
                 Events
               </div>
@@ -154,7 +181,7 @@ export function NavSearch() {
             </div>
           )}
           {suggestions.venues.length > 0 && (
-            <div style={{ borderTop: suggestions.events.length > 0 ? '1px solid var(--border2)' : 'none' }}>
+            <div style={{ borderTop: suggestions.cities.length > 0 || suggestions.events.length > 0 ? '1px solid var(--border2)' : 'none' }}>
               <div style={{ padding: '8px 14px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
                 Venues
               </div>

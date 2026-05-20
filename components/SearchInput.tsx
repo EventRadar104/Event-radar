@@ -19,6 +19,7 @@ interface SuggestionVenue {
 interface Suggestions {
   events: SuggestionEvent[]
   venues: SuggestionVenue[]
+  cities: string[]
 }
 
 interface Props {
@@ -29,18 +30,18 @@ interface Props {
 export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
   const router = useRouter()
   const [value, setValue] = useState(defaultValue)
-  const [suggestions, setSuggestions] = useState<Suggestions>({ events: [], venues: [] })
+  const [suggestions, setSuggestions] = useState<Suggestions>({ events: [], venues: [], cities: [] })
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const hasSuggestions = suggestions.events.length > 0 || suggestions.venues.length > 0
+  const hasSuggestions = suggestions.cities.length > 0 || suggestions.events.length > 0 || suggestions.venues.length > 0
   const showDropdown = open && hasSuggestions
 
   const fetchSuggestions = useCallback((q: string) => {
     if (timerRef.current) clearTimeout(timerRef.current)
     if (q.trim().length < 2) {
-      setSuggestions({ events: [], venues: [] })
+      setSuggestions({ events: [], venues: [], cities: [] })
       setOpen(false)
       return
     }
@@ -49,7 +50,7 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
         const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(q)}`)
         const data: Suggestions = await res.json()
         setSuggestions(data)
-        setOpen(data.events.length > 0 || data.venues.length > 0)
+        setOpen(data.cities.length > 0 || data.events.length > 0 || data.venues.length > 0)
       } catch { /* non-critical */ }
     }, 300)
   }, [])
@@ -77,10 +78,26 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
     router.push(`/events/${slug}`)
   }
 
+  function handleCityClick(city: string) {
+    setValue('')
+    setOpen(false)
+    const p = new URLSearchParams()
+    p.set('city', city)
+    for (const [k, v] of Object.entries(hiddenParams)) {
+      if (k !== 'city' && v) p.set(k, v)
+    }
+    router.push(`/search?${p.toString()}`)
+  }
+
   function handleVenueClick(name: string) {
     setValue(name)
     setOpen(false)
-    router.push(`/search?q=${encodeURIComponent(name)}`)
+    const p = new URLSearchParams()
+    p.set('q', name)
+    for (const [k, v] of Object.entries(hiddenParams)) {
+      if (v) p.set(k, v)
+    }
+    router.push(`/search?${p.toString()}`)
   }
 
   function formatDate(iso: string) {
@@ -130,8 +147,20 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
           borderTop: 'none', borderRadius: '0 0 16px 16px',
           boxShadow: 'var(--shadow-md)', zIndex: 100, overflow: 'hidden',
         }}>
+          {suggestions.cities.length > 0 && (
+            <SuggestionGroup label="Cities">
+              {suggestions.cities.map(city => (
+                <SuggestionRow
+                  key={city}
+                  primary={city}
+                  icon="📍"
+                  onSelect={() => handleCityClick(city)}
+                />
+              ))}
+            </SuggestionGroup>
+          )}
           {suggestions.events.length > 0 && (
-            <SuggestionGroup label="Events">
+            <SuggestionGroup label="Events" topBorder={suggestions.cities.length > 0}>
               {suggestions.events.map(ev => (
                 <SuggestionRow
                   key={ev.id}
@@ -143,7 +172,7 @@ export function SearchInput({ defaultValue = '', hiddenParams = {} }: Props) {
             </SuggestionGroup>
           )}
           {suggestions.venues.length > 0 && (
-            <SuggestionGroup label="Venues" topBorder={suggestions.events.length > 0}>
+            <SuggestionGroup label="Venues" topBorder={suggestions.cities.length > 0 || suggestions.events.length > 0}>
               {suggestions.venues.map(v => (
                 <SuggestionRow
                   key={v.name}
@@ -176,21 +205,25 @@ function SuggestionGroup({ label, children, topBorder = false }: {
   )
 }
 
-function SuggestionRow({ primary, secondary, onSelect }: {
+function SuggestionRow({ primary, secondary, icon, onSelect }: {
   primary: string
   secondary?: string
+  icon?: string
   onSelect: () => void
 }) {
   return (
     <button
       type="button"
       onMouseDown={onSelect}
-      style={{ width: '100%', textAlign: 'left', padding: '9px 16px', border: 'none', background: 'none', cursor: 'pointer', display: 'block' }}
+      style={{ width: '100%', textAlign: 'left', padding: '9px 16px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
       onMouseEnter={e => (e.currentTarget.style.background = 'var(--stone)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'none')}
     >
-      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>{primary}</div>
-      {secondary && <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 1 }}>{secondary}</div>}
+      {icon && <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>}
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>{primary}</div>
+        {secondary && <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 1 }}>{secondary}</div>}
+      </div>
     </button>
   )
 }

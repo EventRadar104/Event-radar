@@ -56,6 +56,19 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
       {/* ── Filter pills ──────────────────────── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32 }}>
+        {/* Dynamic chip for a searched city not in the hardcoded list */}
+        {params.city && !CITIES.includes(params.city) && (
+          <Link key={params.city} href={buildHref(params, { city: '' })} style={{
+            ...pillBase,
+            background: 'var(--ink)',
+            color: '#fff',
+            border: '1px solid var(--ink)',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            {params.city}
+            <span style={{ fontSize: 12, opacity: 0.7 }}>×</span>
+          </Link>
+        )}
         {CITIES.map(city => {
           const active = params.city === city
           return (
