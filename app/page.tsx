@@ -16,14 +16,6 @@ import { Pagination } from '@/components/Pagination'
 import { DiscoverSection } from '@/components/DiscoverSection'
 import type { SearchParams, EventWithDetails } from '@/lib/types'
 
-const CITIES = ['Oslo', 'Bergen', 'Trondheim', 'Tromsø', 'Stavanger', 'Kristiansand']
-const CATEGORIES = [
-  { label: 'Music', slug: 'concerts-music' },
-  { label: 'Sports', slug: 'sports' },
-  { label: 'Food & Drink', slug: 'food-nightlife' },
-  { label: 'Outdoor', slug: 'outdoors' },
-  { label: 'Comedy', slug: 'comedy' },
-]
 
 function buildHref(params: SearchParams, overrides: Partial<SearchParams>): string {
   const p = { ...params, ...overrides }
@@ -91,30 +83,22 @@ export default async function HomePage({ searchParams }: PageProps) {
         <h1 style={{ fontSize: 'clamp(32px,5vw,60px)', maxWidth: 640, margin: '0 auto 14px' }}>
           Find your next<br /><em style={{ fontStyle: 'italic', color: 'var(--green)' }}>favourite event</em>
         </h1>
-        <p style={{ fontSize: 16, color: 'var(--ink3)', maxWidth: 380, margin: '0 auto 32px' }}>
+        <p style={{ fontSize: 16, color: 'var(--ink3)', maxWidth: 380, margin: '0 auto 28px' }}>
           Concerts, sports, food, art and more — across every city in Norway.
         </p>
-        <form action="/" method="GET" style={{ display: 'flex', alignItems: 'stretch', background: 'var(--white)', border: '1.5px solid var(--border)', borderRadius: 16, maxWidth: 700, margin: '0 auto', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}>
-          <div style={{ flex: 1, padding: '13px 18px', borderRight: '1px solid var(--border)', textAlign: 'left' }}>
-            <label htmlFor="city-select" style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>Where</label>
-            <select id="city-select" name="city" defaultValue={activeCity} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
-              <option value="">All of Norway</option>
-              {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div style={{ flex: 1, padding: '13px 18px', borderRight: '1px solid var(--border)', textAlign: 'left' }}>
-            <label htmlFor="date-input" style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>When</label>
-            <input id="date-input" type="date" name="from" defaultValue={params.from ?? ''} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }} />
-          </div>
-          <div style={{ flex: 1, padding: '13px 18px', textAlign: 'left' }}>
-            <label htmlFor="cat-select" style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', display: 'block', marginBottom: 3 }}>Category</label>
-            <select id="cat-select" name="cat" defaultValue={activeCat} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
-              <option value="">All events</option>
-              {CATEGORIES.map(c => <option key={c.slug} value={c.slug}>{c.label}</option>)}
-            </select>
-          </div>
-          <button type="submit" style={{ background: 'var(--green)', color: '#fff', border: 'none', padding: '0 26px', fontSize: 14, fontWeight: 500, flexShrink: 0, cursor: 'pointer' }}>Search</button>
-        </form>
+        <Link
+          href="/search"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: 'var(--green)', color: '#fff',
+            borderRadius: 40, padding: '13px 28px',
+            fontSize: 15, fontWeight: 600,
+            textDecoration: 'none',
+          }}
+        >
+          Find events
+          <span style={{ fontSize: 17 }}>→</span>
+        </Link>
       </section>
 <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 80px' }}>
         {hasTraditionalFilters ? (
