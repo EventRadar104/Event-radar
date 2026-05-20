@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Instrument_Serif, Inter } from 'next/font/google'
 import './globals.css'
 import { Nav } from '@/components/Nav'
@@ -33,6 +33,12 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -48,7 +54,7 @@ export default function RootLayout({
       </head>
       <body>
         <Nav />
-        <main style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <main>
           {children}
         </main>
         <MobileTabBar />

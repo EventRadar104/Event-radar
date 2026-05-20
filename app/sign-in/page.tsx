@@ -23,7 +23,7 @@ export default async function SignInPage({ searchParams }: PageProps) {
 
   return (
     <div style={{
-      minHeight: 'calc(100vh - 60px)',
+      minHeight: 'calc(100dvh - 60px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 24, background: 'var(--white)',
     }}>

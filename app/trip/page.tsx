@@ -68,7 +68,7 @@ export default function TripPage() {
         maxWidth: 640,
         margin: '0 auto',
         padding: '28px 20px 32px',
-        minHeight: 'calc(100vh - 60px)',
+        minHeight: 'calc(100dvh - 60px)',
         background: 'var(--bg)',
       }}>
         {/* Header */}

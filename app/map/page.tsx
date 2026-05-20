@@ -7,7 +7,7 @@ const MapContent = dynamic(() => import('./MapContent'), {
   loading: () => (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: 'calc(100vh - 60px)', background: 'var(--stone)',
+      height: 'calc(100dvh - 60px)', background: 'var(--stone)',
     }}>
       <div style={{
         width: 28, height: 28, borderRadius: '50%',
@@ -23,7 +23,7 @@ export default function MapPage() {
     <Suspense fallback={
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: 'calc(100vh - 60px)', background: 'var(--stone)',
+        height: 'calc(100dvh - 60px)', background: 'var(--stone)',
       }}>
         <div style={{
           width: 28, height: 28, borderRadius: '50%',

@@ -49,14 +49,14 @@ export default async function DashboardPage({
   const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'there'
 
   return (
-    <div style={{ display:'flex', minHeight:'calc(100vh - 60px)' }}>
+    <div style={{ display:'flex', minHeight:'calc(100dvh - 60px)' }}>
 
       {/* ── SIDEBAR ────────────────────────── */}
       <div style={{
         width: 230, flexShrink: 0, background: 'var(--white)',
         borderRight: '1px solid var(--border)', padding: '24px 12px',
         display: 'flex', flexDirection: 'column', gap: 2,
-        position: 'sticky', top: 60, height: 'calc(100vh - 60px)', overflowY: 'auto',
+        position: 'sticky', top: 60, height: 'calc(100dvh - 60px)', overflowY: 'auto',
       }}>
         <div style={{ fontSize:10, fontWeight:600, color:'var(--ink4)', textTransform:'uppercase', letterSpacing:'.08em', padding:'6px 12px 4px', marginTop:12 }}>
           Overview

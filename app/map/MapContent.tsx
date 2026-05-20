@@ -278,12 +278,12 @@ export default function MapContent() {
         .map-page-outer {
           display: flex;
           flex-direction: column;
-          height: calc(100vh - 60px);
+          height: calc(100dvh - 60px);
           overflow: hidden;
           background: var(--bg);
         }
         @media (max-width: 640px) {
-          .map-page-outer { height: calc(100vh - 130px); }
+          .map-page-outer { height: calc(100dvh - 60px - 70px - env(safe-area-inset-bottom, 0px)); }
         }
       `}</style>
 
