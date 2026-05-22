@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────
 
 export type UserRole = 'attendee' | 'organizer' | 'admin'
+export type UserRoles = 'consumer' | 'publisher'
 export type EventStatus = 'draft' | 'published' | 'cancelled' | 'completed'
 export type EventSource = 'manual' | 'scraped'
 export type RsvpStatus = 'attending' | 'interested' | 'not_attending'
@@ -13,6 +14,7 @@ export type RsvpStatus = 'attending' | 'interested' | 'not_attending'
 export interface Profile {
   id: string
   role: UserRole
+  roles: UserRoles[]
   display_name: string | null
   avatar_url: string | null
   bio: string | null
