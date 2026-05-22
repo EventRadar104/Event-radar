@@ -283,24 +283,6 @@ export function ProfileClient({
             <div style={{ fontSize: 13, color: 'var(--ink3)', marginTop: 2 }}>{userEmail}</div>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {hasConsumer && (
-              <span style={{
-                padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE',
-              }}>
-                Attendee
-              </span>
-            )}
-            {hasPublisher && (
-              <span style={{
-                padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                background: 'var(--green-lt)', color: 'var(--green)', border: '1px solid #BBD9CC',
-              }}>
-                Organizer
-              </span>
-            )}
-          </div>
         </div>
 
         {/* Role toggle */}
