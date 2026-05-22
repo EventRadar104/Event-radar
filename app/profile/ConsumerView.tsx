@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useT } from './i18n'
+import { getAnalyticsConsent, getMarketingConsent, savePreferences } from '@/lib/consent'
 import type { Lang } from './i18n'
 
 interface Props {
@@ -47,9 +48,17 @@ export function ConsumerView({
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Settings sheets
-  const [activeSheet, setActiveSheet] = useState<'notifications' | 'language' | null>(null)
+  const [activeSheet, setActiveSheet] = useState<'notifications' | 'language' | 'privacy' | null>(null)
   const [emailNotifs, setEmailNotifs] = useState(true)
   const [pushNotifs, setPushNotifs] = useState(false)
+  // Consent state — initialised from localStorage after mount
+  const [analyticsConsent, setAnalyticsConsent] = useState(false)
+  const [marketingConsent, setMarketingConsent] = useState(false)
+
+  useEffect(() => {
+    setAnalyticsConsent(getAnalyticsConsent())
+    setMarketingConsent(getMarketingConsent())
+  }, [])
 
   const displayAvatarUrl = previewAvatarUrl ?? currentSavedAvatarUrl
   const initials = (currentSavedName ?? userEmail).slice(0, 1).toUpperCase()
@@ -289,7 +298,7 @@ export function ConsumerView({
         <SettingsRow
           icon="ti-shield"
           label={t.privacy}
-          href="/privacy"
+          onClick={() => setActiveSheet('privacy')}
           isLast
         />
       </div>
@@ -398,6 +407,17 @@ export function ConsumerView({
                 t={t}
                 language={language}
                 onSelect={lang => { onLanguageChange(lang); setActiveSheet(null) }}
+                onClose={() => setActiveSheet(null)}
+              />
+            )}
+            {activeSheet === 'privacy' && (
+              <PrivacySheet
+                t={t}
+                userId={userId}
+                analytics={analyticsConsent}
+                marketing={marketingConsent}
+                onAnalyticsChange={setAnalyticsConsent}
+                onMarketingChange={setMarketingConsent}
                 onClose={() => setActiveSheet(null)}
               />
             )}
@@ -589,6 +609,90 @@ function LanguageSheet({
       >
         {t.cancel}
       </button>
+    </div>
+  )
+}
+
+function PrivacySheet({
+  t,
+  userId,
+  analytics,
+  marketing,
+  onAnalyticsChange,
+  onMarketingChange,
+  onClose,
+}: {
+  t: T
+  userId: string
+  analytics: boolean
+  marketing: boolean
+  onAnalyticsChange: (v: boolean) => void
+  onMarketingChange: (v: boolean) => void
+  onClose: () => void
+}) {
+  const [isSaving, setIsSaving] = useState(false)
+
+  async function handleSave() {
+    setIsSaving(true)
+    savePreferences(analytics, marketing)
+    const consentValue = analytics || marketing ? 'accepted' : 'declined'
+    const supabase = createClient()
+    await supabase.from('profiles').update({ cookie_consent: consentValue }).eq('id', userId)
+    setIsSaving(false)
+    onClose()
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 20 }}>{t.privacyTitle}</div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        paddingBottom: 16, borderBottom: '1px solid var(--border2)', marginBottom: 16,
+      }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 500 }}>{t.analyticsCookies}</div>
+          <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{t.analyticsCookiesDesc}</div>
+        </div>
+        <ToggleSwitch enabled={analytics} onToggle={() => onAnalyticsChange(!analytics)} />
+      </div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 24,
+      }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 500 }}>{t.marketingCookies}</div>
+          <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{t.marketingCookiesDesc}</div>
+        </div>
+        <ToggleSwitch enabled={marketing} onToggle={() => onMarketingChange(!marketing)} />
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={isSaving}
+        style={{
+          width: '100%', padding: '13px 0',
+          background: 'var(--green)', color: '#fff',
+          border: 'none', borderRadius: 12,
+          fontSize: 15, fontWeight: 500, cursor: 'pointer',
+          fontFamily: 'var(--font-sans)',
+          opacity: isSaving ? .6 : 1,
+          marginBottom: 16,
+        }}
+      >
+        {isSaving ? t.savingPreferences : t.savePreferences}
+      </button>
+
+      <div style={{ textAlign: 'center' }}>
+        <Link
+          href="/privacy"
+          onClick={onClose}
+          style={{ fontSize: 13, color: 'var(--green)', textDecoration: 'underline' }}
+        >
+          {t.readPrivacyPolicy}
+        </Link>
+      </div>
     </div>
   )
 }

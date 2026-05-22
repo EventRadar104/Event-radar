@@ -45,6 +45,16 @@ const translations = {
     ctaButton: 'Become an organizer',
     ctaButtonBusy: 'Setting up…',
 
+    // Privacy sheet
+    privacyTitle: 'Privacy',
+    analyticsCookies: 'Analytics cookies',
+    analyticsCookiesDesc: 'Help us understand how the platform is used',
+    marketingCookies: 'Marketing cookies',
+    marketingCookiesDesc: 'Used for targeted advertising',
+    savePreferences: 'Save preferences',
+    savingPreferences: 'Saving…',
+    readPrivacyPolicy: 'Read our full Privacy Policy',
+
     // Sign out
     signOut: 'Sign out',
   },
@@ -85,6 +95,16 @@ const translations = {
     ctaBody: 'Opprett arrangementer og følg med på visninger, lagringer og påmeldinger – alt på ett sted.',
     ctaButton: 'Bli arrangør',
     ctaButtonBusy: 'Setter opp…',
+
+    // Privacy sheet
+    privacyTitle: 'Personvern',
+    analyticsCookies: 'Analysecookies',
+    analyticsCookiesDesc: 'Hjelper oss å forstå hvordan plattformen brukes',
+    marketingCookies: 'Markedsføringscookies',
+    marketingCookiesDesc: 'Brukes til målrettet reklame',
+    savePreferences: 'Lagre innstillinger',
+    savingPreferences: 'Lagrer…',
+    readPrivacyPolicy: 'Les vår personvernerklæring',
 
     signOut: 'Logg ut',
   },
