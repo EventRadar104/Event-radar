@@ -50,7 +50,7 @@ export async function Nav() {
 
         {/* Avatar / Sign in — always visible */}
         {user ? (
-          <Link href="/dashboard" style={{ width:32, height:32, borderRadius:'50%', background:'var(--green-lt)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--green)', textDecoration:'none', flexShrink:0 }}>
+          <Link href="/profile" style={{ width:32, height:32, borderRadius:'50%', background:'var(--green-lt)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--green)', textDecoration:'none', flexShrink:0 }}>
             <svg viewBox="0 0 16 16" fill="none" width={16} height={16}><circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
           </Link>
         ) : (

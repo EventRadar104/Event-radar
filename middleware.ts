@@ -31,6 +31,7 @@ export async function middleware(request: NextRequest) {
   // Protect dashboard, create-event, and groups routes
   if (!user && (
     request.nextUrl.pathname.startsWith('/dashboard') ||
+    request.nextUrl.pathname.startsWith('/profile') ||
     request.nextUrl.pathname.startsWith('/events/new') ||
     request.nextUrl.pathname.startsWith('/groups')
   )) {
