@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { PublisherView } from './PublisherView'
+import type { PublisherData } from './PublisherView'
 
 type ProfileRole = 'consumer' | 'publisher'
 
@@ -12,41 +14,50 @@ interface Props {
   displayName: string | null
   avatarUrl: string | null
   roles: ProfileRole[]
+  publisherData: PublisherData | null
 }
 
 const NAV_SECTIONS = [
   {
-    heading: 'PROFIL',
-    items: [{ label: 'Profil', href: '/profile', roles: null }],
+    heading: 'PROFILE',
+    items: [{ label: 'Profile', href: '/profile' }],
+    requiredRole: null as ProfileRole | null,
   },
   {
-    heading: 'SOM DELTAKER',
+    heading: 'AS ATTENDEE',
     requiredRole: 'consumer' as ProfileRole,
     items: [
-      { label: 'Mine billetter', href: '/profile/tickets', roles: 'consumer' },
-      { label: 'Favoritter', href: '/profile/favorites', roles: 'consumer' },
+      { label: 'My tickets', href: '/profile/tickets' },
+      { label: 'Favorites', href: '/profile/favorites' },
     ],
   },
   {
-    heading: 'SOM ARRANGØR',
+    heading: 'AS ORGANIZER',
     requiredRole: 'publisher' as ProfileRole,
     items: [
-      { label: 'Dashboard', href: '/dashboard', roles: 'publisher' },
-      { label: 'Mine arrangementer', href: '/dashboard?tab=events', roles: 'publisher' },
-      { label: 'Visninger og rekkevidde', href: '/dashboard?tab=views', roles: 'publisher' },
-      { label: 'Interesse og lagringer', href: '/dashboard?tab=saves', roles: 'publisher' },
+      { label: 'Dashboard', href: '/dashboard' },
+      { label: 'My events', href: '/profile?section=my-events' },
+      { label: 'Views & reach', href: '/dashboard?tab=views' },
+      { label: 'Interest & saves', href: '/dashboard?tab=saves' },
     ],
   },
   {
-    heading: 'KONTO',
+    heading: 'ACCOUNT',
+    requiredRole: null as ProfileRole | null,
     items: [
-      { label: 'Innstillinger', href: '/dashboard?tab=settings', roles: null },
-      { label: 'Logg ut', href: '#signout', roles: null },
+      { label: 'Settings', href: '/dashboard?tab=settings' },
+      { label: 'Sign out', href: '#signout' },
     ],
   },
 ]
 
-export function ProfileClient({ userEmail, displayName, avatarUrl, roles }: Props) {
+export function ProfileClient({
+  userEmail,
+  displayName,
+  avatarUrl,
+  roles,
+  publisherData,
+}: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [activeRole, setActiveRole] = useState<ProfileRole>(
     roles.includes('consumer') ? 'consumer' : 'publisher'
@@ -72,18 +83,14 @@ export function ProfileClient({ userEmail, displayName, avatarUrl, roles }: Prop
       {drawerOpen && (
         <div
           onClick={() => setDrawerOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 400,
-            background: 'rgba(0,0,0,.32)',
-          }}
+          style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,.32)' }}
           aria-hidden="true"
         />
       )}
 
       {/* ── Side drawer ────────────────────────────────────── */}
-      <div
-        role="navigation"
-        aria-label="Profil-meny"
+      <nav
+        aria-label="Profile navigation"
         style={{
           position: 'fixed',
           top: 60,
@@ -123,7 +130,7 @@ export function ProfileClient({ userEmail, displayName, avatarUrl, roles }: Prop
                       fontFamily: 'var(--font-sans)',
                     }}
                   >
-                    Logg ut
+                    Sign out
                   </button>
                 ) : (
                   <Link
@@ -146,38 +153,32 @@ export function ProfileClient({ userEmail, displayName, avatarUrl, roles }: Prop
             </div>
           )
         })}
-      </div>
+      </nav>
 
       {/* ── Drawer handle tab ──────────────────────────────── */}
       <button
         onClick={() => setDrawerOpen(o => !o)}
-        aria-label={drawerOpen ? 'Lukk meny' : 'Åpne meny'}
+        aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
         style={{
           position: 'fixed',
           top: '50%',
           left: drawerOpen ? 260 : 0,
           transform: 'translateY(-50%)',
           zIndex: 420,
-          width: 24,
-          height: 56,
+          width: 24, height: 56,
           background: 'var(--white)',
           border: '1px solid var(--border)',
           borderLeft: drawerOpen ? '1px solid var(--border)' : 'none',
           borderRadius: '0 8px 8px 0',
           cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'left .25s cubic-bezier(.4,0,.2,1)',
           boxShadow: '2px 0 8px rgba(0,0,0,.06)',
           padding: 0,
         }}
       >
         <svg
-          viewBox="0 0 8 12"
-          fill="none"
-          width={8}
-          height={12}
+          viewBox="0 0 8 12" fill="none" width={8} height={12}
           style={{ transition: 'transform .2s', transform: drawerOpen ? 'rotate(180deg)' : 'none' }}
         >
           <path d="M2 2l4 4-4 4" stroke="var(--ink3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -185,26 +186,15 @@ export function ProfileClient({ userEmail, displayName, avatarUrl, roles }: Prop
       </button>
 
       {/* ── Main content ───────────────────────────────────── */}
-      <div style={{
-        maxWidth: 520,
-        margin: '0 auto',
-        padding: '32px 20px 40px',
-      }}>
+      <div style={{ maxWidth: 520, margin: '0 auto', padding: '32px 20px 40px' }}>
 
         {/* Role card */}
         <div style={{
-          background: 'var(--white)',
-          border: '1px solid var(--border)',
-          borderRadius: 16,
-          padding: '24px 20px',
-          marginBottom: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 12,
-          textAlign: 'center',
+          background: 'var(--white)', border: '1px solid var(--border)',
+          borderRadius: 16, padding: '24px 20px', marginBottom: 20,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: 12, textAlign: 'center',
         }}>
-          {/* Avatar */}
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -223,32 +213,31 @@ export function ProfileClient({ userEmail, displayName, avatarUrl, roles }: Prop
             </div>
           )}
 
-          {/* Name */}
           <div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', fontFamily: 'var(--font-serif)' }}>
+            <div style={{
+              fontSize: 18, fontWeight: 600, color: 'var(--ink)',
+              fontFamily: 'var(--font-serif)',
+            }}>
               {displayName ?? userEmail.split('@')[0]}
             </div>
             <div style={{ fontSize: 13, color: 'var(--ink3)', marginTop: 2 }}>{userEmail}</div>
           </div>
 
-          {/* Role badges */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
             {hasConsumer && (
               <span style={{
                 padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                background: '#EFF6FF', color: '#1D4ED8',
-                border: '1px solid #BFDBFE',
+                background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE',
               }}>
-                Deltaker
+                Attendee
               </span>
             )}
             {hasPublisher && (
               <span style={{
                 padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                background: 'var(--green-lt)', color: 'var(--green)',
-                border: '1px solid #BBD9CC',
+                background: 'var(--green-lt)', color: 'var(--green)', border: '1px solid #BBD9CC',
               }}>
-                Arrangør
+                Organizer
               </span>
             )}
           </div>
@@ -257,33 +246,28 @@ export function ProfileClient({ userEmail, displayName, avatarUrl, roles }: Prop
         {/* Role toggle */}
         {showToggle && (
           <div style={{
-            display: 'flex',
-            gap: 8,
-            marginBottom: 20,
-            background: 'var(--stone)',
-            padding: 4,
-            borderRadius: 12,
+            display: 'flex', gap: 8, marginBottom: 20,
+            background: 'var(--stone)', padding: 4, borderRadius: 12,
           }}>
             <ToggleBtn
-              label="Som deltaker"
+              label="As attendee"
               active={activeRole === 'consumer'}
               onClick={() => setActiveRole('consumer')}
             />
             <ToggleBtn
-              label="Som arrangør"
+              label="As organizer"
               active={activeRole === 'publisher'}
               onClick={() => setActiveRole('publisher')}
             />
           </div>
         )}
 
-        {/* Single-role label when no toggle */}
         {!showToggle && hasConsumer && (
           <div style={{
             fontSize: 13, fontWeight: 500, color: 'var(--ink3)',
             marginBottom: 16, textTransform: 'uppercase', letterSpacing: '.06em',
           }}>
-            Deltaker
+            Attendee
           </div>
         )}
         {!showToggle && hasPublisher && (
@@ -291,12 +275,24 @@ export function ProfileClient({ userEmail, displayName, avatarUrl, roles }: Prop
             fontSize: 13, fontWeight: 500, color: 'var(--ink3)',
             marginBottom: 16, textTransform: 'uppercase', letterSpacing: '.06em',
           }}>
-            Arrangør
+            Organizer
           </div>
         )}
 
         {/* Content */}
-        {activeRole === 'consumer' ? <ConsumerView /> : <PublisherView />}
+        {activeRole === 'consumer' ? (
+          <ConsumerView />
+        ) : (
+          publisherData ? (
+            <Suspense>
+              <PublisherView data={publisherData} />
+            </Suspense>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--ink3)', fontSize: 14 }}>
+              Unable to load publisher data.
+            </div>
+          )
+        )}
       </div>
     </div>
   )
@@ -313,8 +309,7 @@ function ToggleBtn({ label, active, onClick }: { label: string; active: boolean;
         borderRadius: 9,
         fontSize: 14, fontWeight: active ? 500 : 400,
         color: active ? 'var(--ink)' : 'var(--ink3)',
-        cursor: 'pointer',
-        transition: 'all .15s',
+        cursor: 'pointer', transition: 'all .15s',
         boxShadow: active ? 'var(--shadow)' : 'none',
         fontFamily: 'var(--font-sans)',
       }}
@@ -327,48 +322,16 @@ function ToggleBtn({ label, active, onClick }: { label: string; active: boolean;
 function ConsumerView() {
   return (
     <div style={{
-      background: 'var(--white)',
-      border: '1px solid var(--border)',
-      borderRadius: 14,
-      padding: '40px 24px',
-      textAlign: 'center',
+      background: 'var(--white)', border: '1px solid var(--border)',
+      borderRadius: 14, padding: '40px 24px', textAlign: 'center',
     }}>
       <div style={{ fontSize: 32, marginBottom: 12 }}>🎟</div>
-      <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Deltaker-visning</div>
+      <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Attendee view</div>
       <div style={{ fontSize: 14, color: 'var(--ink3)', lineHeight: 1.6 }}>
-        Her vil du se billetter, favoritter og dine kommende arrangementer.<br />
-        <span style={{ fontStyle: 'italic' }}>Kommer snart.</span>
+        Your tickets, favorites, and upcoming events will appear here.
+        <br />
+        <span style={{ fontStyle: 'italic', color: 'var(--ink4)' }}>Coming soon.</span>
       </div>
-    </div>
-  )
-}
-
-function PublisherView() {
-  return (
-    <div style={{
-      background: 'var(--white)',
-      border: '1px solid var(--border)',
-      borderRadius: 14,
-      padding: '40px 24px',
-      textAlign: 'center',
-    }}>
-      <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
-      <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Arrangør-visning</div>
-      <div style={{ fontSize: 14, color: 'var(--ink3)', lineHeight: 1.6 }}>
-        Her vil du se ditt dashboard, arrangementer og statistikk.<br />
-        <span style={{ fontStyle: 'italic' }}>Kommer snart.</span>
-      </div>
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-block', marginTop: 16,
-          padding: '9px 20px', background: 'var(--green)',
-          color: '#fff', borderRadius: 40, fontSize: 14,
-          fontWeight: 500, textDecoration: 'none',
-        }}
-      >
-        Gå til dashboard →
-      </Link>
     </div>
   )
 }

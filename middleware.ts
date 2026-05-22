@@ -33,6 +33,7 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/profile') ||
     request.nextUrl.pathname.startsWith('/events/new') ||
+    request.nextUrl.pathname.startsWith('/events/edit/') ||
     request.nextUrl.pathname.startsWith('/groups')
   )) {
     const url = request.nextUrl.clone()
