@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getOrganizerStats } from '@/lib/queries'
 import { ProfileClient } from './ProfileClient'
@@ -14,18 +15,39 @@ export default async function ProfilePage() {
 
   if (!user) redirect('/sign-in?redirect=/profile')
 
-  const { data: profile } = await supabase
+  // Select only stable columns — the `roles` text[] column was added by migration
+  // 20260522000000 but may not be applied on the target DB. Querying a missing
+  // column causes Supabase to return { data: null }, which breaks the whole page.
+  // We read `roles` in a separate, error-tolerant call below.
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('display_name, avatar_url, roles, role')
+    .select('display_name, avatar_url, role')
     .eq('id', user.id)
     .single()
 
-  // Derive roles: prefer new `roles` array, fall back to legacy `role` field
-  let roles: ('consumer' | 'publisher')[] =
-    (profile?.roles as ('consumer' | 'publisher')[] | null) ?? []
-  if (roles.length === 0) {
-    roles = profile?.role === 'organizer' ? ['consumer', 'publisher'] : ['consumer']
+  if (profileError) {
+    console.error('[profile/page] profile query error:', profileError.message)
   }
+  console.log('[profile/page] raw profile:', { id: user.id, role: profile?.role })
+
+  // Try the new `roles` array column (exists only after migration is applied)
+  const { data: rolesRow } = await supabase
+    .from('profiles')
+    .select('roles')
+    .eq('id', user.id)
+    .single()
+
+  const rolesFromColumn =
+    Array.isArray(rolesRow?.roles) && (rolesRow.roles as string[]).length > 0
+      ? (rolesRow.roles as ('consumer' | 'publisher')[])
+      : null
+
+  // Derive: prefer the new column, fall back to legacy `role` field
+  const roles: ('consumer' | 'publisher')[] =
+    rolesFromColumn ??
+    (profile?.role === 'organizer' ? ['consumer', 'publisher'] : ['consumer'])
+
+  console.log('[profile/page] derived roles:', roles, '| source:', rolesFromColumn ? 'roles column' : 'legacy role field')
 
   // Fetch publisher data only when the user has the publisher role
   let publisherData: PublisherData | null = null
@@ -64,12 +86,14 @@ export default async function ProfilePage() {
   }
 
   return (
-    <ProfileClient
-      userEmail={user.email ?? ''}
-      displayName={profile?.display_name ?? null}
-      avatarUrl={profile?.avatar_url ?? null}
-      roles={roles}
-      publisherData={publisherData}
-    />
+    <Suspense>
+      <ProfileClient
+        userEmail={user.email ?? ''}
+        displayName={profile?.display_name ?? null}
+        avatarUrl={profile?.avatar_url ?? null}
+        roles={roles}
+        publisherData={publisherData}
+      />
+    </Suspense>
   )
 }

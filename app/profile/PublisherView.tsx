@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { useSearchParams } from 'next/navigation'
 
 export interface EventStat {
   event_id: string
@@ -28,11 +27,12 @@ export interface PublisherData {
 
 interface Props {
   data: PublisherData
+  scrollToEvents?: boolean
 }
 
 type Sheet = { kind: 'edit'; event: EventStat } | { kind: 'delete'; event: EventStat } | null
 
-export function PublisherView({ data }: Props) {
+export function PublisherView({ data, scrollToEvents }: Props) {
   const [events, setEvents] = useState<EventStat[]>(data.events)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [unpublishConfirm, setUnpublishConfirm] = useState(false)
@@ -40,15 +40,13 @@ export function PublisherView({ data }: Props) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUnpublishing, setIsUnpublishing] = useState(false)
 
-  const searchParams = useSearchParams()
-
   useEffect(() => {
-    if (searchParams.get('section') === 'my-events') {
+    if (scrollToEvents) {
       setTimeout(() => {
         document.getElementById('my-events')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 200)
     }
-  }, [searchParams])
+  }, [scrollToEvents])
 
   const activeEvents = events.filter(e => e.status === 'published')
   const draftEvents = events.filter(e => e.status === 'draft')
