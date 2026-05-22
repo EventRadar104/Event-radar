@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { PublisherView } from './PublisherView'
 import type { PublisherData } from './PublisherView'
 
@@ -58,11 +58,21 @@ export function ProfileClient({
   roles,
   publisherData,
 }: Props) {
+  const searchParams = useSearchParams()
+  const sectionParam = searchParams.get('section')
+
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [activeRole, setActiveRole] = useState<ProfileRole>(
-    roles.includes('consumer') ? 'consumer' : 'publisher'
+    // When ?section=my-events is present, default straight to the publisher view
+    sectionParam === 'my-events' && roles.includes('publisher')
+      ? 'publisher'
+      : roles.includes('consumer')
+      ? 'consumer'
+      : 'publisher'
   )
   const router = useRouter()
+
+  console.log('[ProfileClient] roles prop:', roles, '| hasPublisher:', roles.includes('publisher'))
 
   const initials = (displayName ?? userEmail).slice(0, 1).toUpperCase()
   const hasConsumer = roles.includes('consumer')
@@ -284,9 +294,10 @@ export function ProfileClient({
           <ConsumerView />
         ) : (
           publisherData ? (
-            <Suspense>
-              <PublisherView data={publisherData} />
-            </Suspense>
+            <PublisherView
+              data={publisherData}
+              scrollToEvents={sectionParam === 'my-events'}
+            />
           ) : (
             <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--ink3)', fontSize: 14 }}>
               Unable to load publisher data.
