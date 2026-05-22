@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useT } from './i18n'
+import type { Lang } from './i18n'
 
 interface Props {
   userId: string
@@ -11,6 +13,8 @@ interface Props {
   userEmail: string
   isPublisher: boolean
   isBecomingOrganizer: boolean
+  language: Lang
+  onLanguageChange: (lang: Lang) => void
   onBecomeOrganizer: () => Promise<void>
   onSignOut: () => void
   onProfileSaved: (updates: { displayName?: string | null; avatarUrl?: string }) => void
@@ -23,10 +27,14 @@ export function ConsumerView({
   userEmail,
   isPublisher,
   isBecomingOrganizer,
+  language,
+  onLanguageChange,
   onBecomeOrganizer,
   onSignOut,
   onProfileSaved,
 }: Props) {
+  const t = useT(language)
+
   // Account editing
   const [currentSavedName, setCurrentSavedName] = useState(savedDisplayName)
   const [currentSavedAvatarUrl, setCurrentSavedAvatarUrl] = useState(savedAvatarUrl)
@@ -42,7 +50,6 @@ export function ConsumerView({
   const [activeSheet, setActiveSheet] = useState<'notifications' | 'language' | null>(null)
   const [emailNotifs, setEmailNotifs] = useState(true)
   const [pushNotifs, setPushNotifs] = useState(false)
-  const [language, setLanguage] = useState<'en' | 'no'>('en')
 
   const displayAvatarUrl = previewAvatarUrl ?? currentSavedAvatarUrl
   const initials = (currentSavedName ?? userEmail).slice(0, 1).toUpperCase()
@@ -60,7 +67,6 @@ export function ConsumerView({
     const reader = new FileReader()
     reader.onload = ev => setPreviewAvatarUrl(ev.target?.result as string)
     reader.readAsDataURL(file)
-    // Reset input so same file can be re-selected
     e.target.value = ''
   }
 
@@ -84,7 +90,6 @@ export function ConsumerView({
     const dbUpdates: Record<string, unknown> = {}
     const uiUpdates: { displayName?: string | null; avatarUrl?: string } = {}
 
-    // Upload avatar if a new file is selected
     if (pendingAvatarFile) {
       const ext = pendingAvatarFile.name.split('.').pop()
       const path = `profiles/${userId}/${Date.now()}.${ext}`
@@ -93,7 +98,7 @@ export function ConsumerView({
         .upload(path, pendingAvatarFile, { upsert: true, contentType: pendingAvatarFile.type })
 
       if (uploadErr) {
-        setSaveError('Image upload failed. Please try again.')
+        setSaveError(t.errorUpload)
         setIsSaving(false)
         return
       }
@@ -102,7 +107,6 @@ export function ConsumerView({
       uiUpdates.avatarUrl = publicUrl
     }
 
-    // Update display name if changed
     if (nameChanged) {
       const trimmed = nameInput.trim() || null
       dbUpdates.display_name = trimmed
@@ -112,13 +116,12 @@ export function ConsumerView({
     if (Object.keys(dbUpdates).length > 0) {
       const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', userId)
       if (error) {
-        setSaveError('Failed to save. Please try again.')
+        setSaveError(t.errorSave)
         setIsSaving(false)
         return
       }
     }
 
-    // Commit UI state
     if (uiUpdates.avatarUrl) {
       setCurrentSavedAvatarUrl(uiUpdates.avatarUrl)
       setPreviewAvatarUrl(null)
@@ -141,11 +144,10 @@ export function ConsumerView({
         background: 'var(--white)', border: '1px solid var(--border)',
         borderRadius: 16, padding: '24px 20px',
       }}>
-        {/* Avatar */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <button
             onClick={handleAvatarClick}
-            aria-label="Change profile photo"
+            aria-label={t.changePhoto}
             style={{
               position: 'relative', width: 84, height: 84,
               borderRadius: '50%', background: 'none',
@@ -194,7 +196,7 @@ export function ConsumerView({
                 value={nameInput}
                 onChange={e => setNameInput(e.target.value)}
                 autoFocus
-                placeholder="Your name"
+                placeholder={t.yourName}
                 onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') cancelEditName() }}
                 style={{
                   width: '100%', maxWidth: 280,
@@ -211,7 +213,7 @@ export function ConsumerView({
                   fontSize: 12, color: 'var(--ink3)', fontFamily: 'var(--font-sans)',
                 }}
               >
-                Cancel
+                {t.cancel}
               </button>
             </div>
           ) : (
@@ -236,10 +238,8 @@ export function ConsumerView({
             </div>
           )}
 
-          {/* Email */}
           <div style={{ fontSize: 13, color: 'var(--ink3)', marginTop: -6 }}>{userEmail}</div>
 
-          {/* Save / error */}
           {saveError && (
             <div style={{
               background: '#FEE2E2', color: '#DC2626',
@@ -264,7 +264,7 @@ export function ConsumerView({
                 transition: 'opacity .15s',
               }}
             >
-              {isSaving ? 'Saving…' : 'Save changes'}
+              {isSaving ? t.saving : t.saveChanges}
             </button>
           )}
         </div>
@@ -277,18 +277,18 @@ export function ConsumerView({
       }}>
         <SettingsRow
           icon="ti-bell"
-          label="Notifications"
+          label={t.notifications}
           onClick={() => setActiveSheet('notifications')}
         />
         <SettingsRow
           icon="ti-language"
-          label="Language"
-          value={language === 'en' ? 'English' : 'Norsk'}
+          label={t.language}
+          value={t.languageValue}
           onClick={() => setActiveSheet('language')}
         />
         <SettingsRow
           icon="ti-shield"
-          label="Privacy"
+          label={t.privacy}
           href="/privacy"
           isLast
         />
@@ -312,10 +312,10 @@ export function ConsumerView({
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4, color: 'var(--ink)' }}>
-                Post your own events
+                {t.ctaHeading}
               </div>
               <div style={{ fontSize: 13, color: 'var(--ink2)', lineHeight: 1.55 }}>
-                Create events, track views, saves, and attendance — all in one place.
+                {t.ctaBody}
               </div>
             </div>
           </div>
@@ -333,7 +333,7 @@ export function ConsumerView({
               transition: 'opacity .15s',
             }}
           >
-            {isBecomingOrganizer ? 'Setting up…' : 'Become an organizer'}
+            {isBecomingOrganizer ? t.ctaButtonBusy : t.ctaButton}
           </button>
         </div>
       )}
@@ -351,7 +351,7 @@ export function ConsumerView({
         }}
       >
         <i className="ti ti-logout" style={{ fontSize: 18, color: '#DC2626' }} />
-        <span style={{ fontSize: 15, fontWeight: 500, color: '#DC2626' }}>Sign out</span>
+        <span style={{ fontSize: 15, fontWeight: 500, color: '#DC2626' }}>{t.signOut}</span>
       </button>
 
       {/* ── Bottom sheets ───────────────────────────────────── */}
@@ -385,6 +385,7 @@ export function ConsumerView({
 
             {activeSheet === 'notifications' && (
               <NotificationsSheet
+                t={t}
                 emailNotifs={emailNotifs}
                 pushNotifs={pushNotifs}
                 onEmailToggle={() => setEmailNotifs(v => !v)}
@@ -394,8 +395,9 @@ export function ConsumerView({
             )}
             {activeSheet === 'language' && (
               <LanguageSheet
+                t={t}
                 language={language}
-                onSelect={lang => { setLanguage(lang); setActiveSheet(null) }}
+                onSelect={lang => { onLanguageChange(lang); setActiveSheet(null) }}
                 onClose={() => setActiveSheet(null)}
               />
             )}
@@ -479,13 +481,17 @@ function ToggleSwitch({ enabled, onToggle }: { enabled: boolean; onToggle: () =>
   )
 }
 
+type T = ReturnType<typeof useT>
+
 function NotificationsSheet({
+  t,
   emailNotifs,
   pushNotifs,
   onEmailToggle,
   onPushToggle,
   onClose,
 }: {
+  t: T
   emailNotifs: boolean
   pushNotifs: boolean
   onEmailToggle: () => void
@@ -494,20 +500,20 @@ function NotificationsSheet({
 }) {
   return (
     <div>
-      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 20 }}>Notifications</div>
+      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 20 }}>{t.notificationsTitle}</div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16, borderBottom: '1px solid var(--border2)', marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 500 }}>Email notifications</div>
-          <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>Updates and event reminders via email</div>
+          <div style={{ fontSize: 15, fontWeight: 500 }}>{t.emailNotifs}</div>
+          <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{t.emailNotifsDesc}</div>
         </div>
         <ToggleSwitch enabled={emailNotifs} onToggle={onEmailToggle} />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 500 }}>Push notifications</div>
-          <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>Browser push notifications</div>
+          <div style={{ fontSize: 15, fontWeight: 500 }}>{t.pushNotifs}</div>
+          <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{t.pushNotifsDesc}</div>
         </div>
         <ToggleSwitch enabled={pushNotifs} onToggle={onPushToggle} />
       </div>
@@ -521,29 +527,31 @@ function NotificationsSheet({
           fontFamily: 'var(--font-sans)',
         }}
       >
-        Done
+        {t.done}
       </button>
     </div>
   )
 }
 
 function LanguageSheet({
+  t,
   language,
   onSelect,
   onClose,
 }: {
-  language: 'en' | 'no'
-  onSelect: (lang: 'en' | 'no') => void
+  t: T
+  language: Lang
+  onSelect: (lang: Lang) => void
   onClose: () => void
 }) {
-  const options: { value: 'en' | 'no'; label: string; sub: string }[] = [
-    { value: 'en', label: 'English', sub: 'English' },
-    { value: 'no', label: 'Norsk', sub: 'Norwegian' },
+  const options: { value: Lang; label: string; sub: string }[] = [
+    { value: 'en', label: t.langEnLabel, sub: t.langEnSub },
+    { value: 'no', label: t.langNoLabel, sub: t.langNoSub },
   ]
 
   return (
     <div>
-      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 20 }}>Language</div>
+      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 20 }}>{t.languageTitle}</div>
 
       {options.map((opt, i) => (
         <button
@@ -579,7 +587,7 @@ function LanguageSheet({
           fontFamily: 'var(--font-sans)',
         }}
       >
-        Cancel
+        {t.cancel}
       </button>
     </div>
   )
