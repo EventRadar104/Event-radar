@@ -5,11 +5,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PublisherView } from './PublisherView'
+import { ConsumerView } from './ConsumerView'
 import type { PublisherData } from './PublisherView'
 
 type ProfileRole = 'consumer' | 'publisher'
 
 interface Props {
+  userId: string
   userEmail: string
   displayName: string | null
   avatarUrl: string | null
@@ -22,14 +24,6 @@ const NAV_SECTIONS = [
     heading: 'PROFILE',
     items: [{ label: 'Profile', href: '/profile' }],
     requiredRole: null as ProfileRole | null,
-  },
-  {
-    heading: 'AS ATTENDEE',
-    requiredRole: 'consumer' as ProfileRole,
-    items: [
-      { label: 'My tickets', href: '/profile/tickets' },
-      { label: 'Favorites', href: '/profile/favorites' },
-    ],
   },
   {
     heading: 'AS ORGANIZER',
@@ -45,13 +39,14 @@ const NAV_SECTIONS = [
     heading: 'ACCOUNT',
     requiredRole: null as ProfileRole | null,
     items: [
-      { label: 'Settings', href: '/dashboard?tab=settings' },
+      { label: 'Settings', href: '/profile' },
       { label: 'Sign out', href: '#signout' },
     ],
   },
 ]
 
 export function ProfileClient({
+  userId,
   userEmail,
   displayName,
   avatarUrl,
@@ -62,8 +57,12 @@ export function ProfileClient({
   const sectionParam = searchParams.get('section')
 
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [localRoles, setLocalRoles] = useState<ProfileRole[]>(roles)
+  const [localPublisherData, setLocalPublisherData] = useState<PublisherData | null>(publisherData)
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(avatarUrl)
+  const [localDisplayName, setLocalDisplayName] = useState<string | null>(displayName)
+  const [isBecomingOrganizer, setIsBecomingOrganizer] = useState(false)
   const [activeRole, setActiveRole] = useState<ProfileRole>(
-    // When ?section=my-events is present, default straight to the publisher view
     sectionParam === 'my-events' && roles.includes('publisher')
       ? 'publisher'
       : roles.includes('consumer')
@@ -72,18 +71,69 @@ export function ProfileClient({
   )
   const router = useRouter()
 
-  console.log('[ProfileClient] roles prop:', roles, '| hasPublisher:', roles.includes('publisher'))
-
-  const initials = (displayName ?? userEmail).slice(0, 1).toUpperCase()
-  const hasConsumer = roles.includes('consumer')
-  const hasPublisher = roles.includes('publisher')
+  const hasConsumer = localRoles.includes('consumer')
+  const hasPublisher = localRoles.includes('publisher')
   const showToggle = hasConsumer && hasPublisher
+
+  const initials = (localDisplayName ?? userEmail).slice(0, 1).toUpperCase()
 
   async function handleSignOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()
+  }
+
+  async function handleBecomeOrganizer() {
+    if (isBecomingOrganizer) return
+    setIsBecomingOrganizer(true)
+
+    const supabase = createClient()
+
+    // Update DB: set roles array and legacy role field
+    await supabase
+      .from('profiles')
+      .update({ roles: ['consumer', 'publisher'], role: 'organizer' })
+      .eq('id', userId)
+
+    // Fetch publisher data client-side
+    const [statsRes, eventsRes] = await Promise.all([
+      supabase.from('organizer_event_stats').select('*').eq('organizer_id', userId),
+      supabase
+        .from('events_with_details')
+        .select('id, title, slug, starts_at, status, venue_city, cover_image_url')
+        .eq('organizer_id', userId)
+        .order('starts_at', { ascending: false }),
+    ])
+
+    const stats = statsRes.data ?? []
+    const statsMap = Object.fromEntries(stats.map((s: Record<string, unknown>) => [s.event_id, s]))
+
+    const events = (eventsRes.data ?? []).map((e: Record<string, unknown>) => ({
+      event_id: e.id as string,
+      title: e.title as string,
+      slug: (e.slug as string | null) ?? null,
+      starts_at: e.starts_at as string,
+      status: e.status as string,
+      venue_city: (e.venue_city as string | null) ?? null,
+      cover_image_url: (e.cover_image_url as string | null) ?? null,
+      views_30d: Number((statsMap[e.id as string] as Record<string, unknown>)?.views_30d ?? 0),
+      save_count: Number((statsMap[e.id as string] as Record<string, unknown>)?.save_count ?? 0),
+      rsvp_attending: Number((statsMap[e.id as string] as Record<string, unknown>)?.rsvp_attending ?? 0),
+    }))
+
+    const newPublisherData: PublisherData = {
+      events,
+      totalViews: stats.reduce((s: number, e: Record<string, unknown>) => s + Number(e.views_30d), 0),
+      totalSaves: stats.reduce((s: number, e: Record<string, unknown>) => s + Number(e.save_count), 0),
+      totalAttending: stats.reduce((s: number, e: Record<string, unknown>) => s + Number(e.rsvp_attending), 0),
+      activeCount: events.filter(e => e.status === 'published').length,
+    }
+
+    setLocalRoles(['consumer', 'publisher'])
+    setLocalPublisherData(newPublisherData)
+    setActiveRole('publisher')
+    setIsBecomingOrganizer(false)
   }
 
   return (
@@ -118,7 +168,7 @@ export function ProfileClient({
         }}
       >
         {NAV_SECTIONS.map((section) => {
-          if (section.requiredRole && !roles.includes(section.requiredRole)) return null
+          if (section.requiredRole && !localRoles.includes(section.requiredRole)) return null
           return (
             <div key={section.heading} style={{ marginBottom: 8 }}>
               <div style={{
@@ -205,11 +255,11 @@ export function ProfileClient({
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           gap: 12, textAlign: 'center',
         }}>
-          {avatarUrl ? (
+          {localAvatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={avatarUrl}
-              alt={displayName ?? 'Avatar'}
+              src={localAvatarUrl}
+              alt={localDisplayName ?? 'Avatar'}
               style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover' }}
             />
           ) : (
@@ -228,7 +278,7 @@ export function ProfileClient({
               fontSize: 18, fontWeight: 600, color: 'var(--ink)',
               fontFamily: 'var(--font-serif)',
             }}>
-              {displayName ?? userEmail.split('@')[0]}
+              {localDisplayName ?? userEmail.split('@')[0]}
             </div>
             <div style={{ fontSize: 13, color: 'var(--ink3)', marginTop: 2 }}>{userEmail}</div>
           </div>
@@ -291,11 +341,24 @@ export function ProfileClient({
 
         {/* Content */}
         {activeRole === 'consumer' ? (
-          <ConsumerView />
+          <ConsumerView
+            userId={userId}
+            savedDisplayName={localDisplayName}
+            savedAvatarUrl={localAvatarUrl}
+            userEmail={userEmail}
+            isPublisher={hasPublisher}
+            isBecomingOrganizer={isBecomingOrganizer}
+            onBecomeOrganizer={handleBecomeOrganizer}
+            onSignOut={handleSignOut}
+            onProfileSaved={(updates) => {
+              if (updates.avatarUrl) setLocalAvatarUrl(updates.avatarUrl)
+              if ('displayName' in updates) setLocalDisplayName(updates.displayName ?? null)
+            }}
+          />
         ) : (
-          publisherData ? (
+          localPublisherData ? (
             <PublisherView
-              data={publisherData}
+              data={localPublisherData}
               scrollToEvents={sectionParam === 'my-events'}
             />
           ) : (
@@ -327,22 +390,5 @@ function ToggleBtn({ label, active, onClick }: { label: string; active: boolean;
     >
       {label}
     </button>
-  )
-}
-
-function ConsumerView() {
-  return (
-    <div style={{
-      background: 'var(--white)', border: '1px solid var(--border)',
-      borderRadius: 14, padding: '40px 24px', textAlign: 'center',
-    }}>
-      <div style={{ fontSize: 32, marginBottom: 12 }}>🎟</div>
-      <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 8 }}>Attendee view</div>
-      <div style={{ fontSize: 14, color: 'var(--ink3)', lineHeight: 1.6 }}>
-        Your tickets, favorites, and upcoming events will appear here.
-        <br />
-        <span style={{ fontStyle: 'italic', color: 'var(--ink4)' }}>Coming soon.</span>
-      </div>
-    </div>
   )
 }

@@ -88,6 +88,7 @@ export default async function ProfilePage() {
   return (
     <Suspense>
       <ProfileClient
+        userId={user.id}
         userEmail={user.email ?? ''}
         displayName={profile?.display_name ?? null}
         avatarUrl={profile?.avatar_url ?? null}
