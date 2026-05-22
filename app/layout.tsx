@@ -3,6 +3,7 @@ import { Instrument_Serif, Inter } from 'next/font/google'
 import './globals.css'
 import { Nav } from '@/components/Nav'
 import { MobileTabBar } from '@/components/MobileTabBar'
+import { CookieBanner } from '@/components/CookieBanner'
 
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
@@ -58,6 +59,7 @@ export default function RootLayout({
           {children}
         </main>
         <MobileTabBar />
+        <CookieBanner />
       </body>
     </html>
   )
