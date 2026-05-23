@@ -28,7 +28,6 @@ export default async function ProfilePage() {
   if (profileError) {
     console.error('[profile/page] profile query error:', profileError.message)
   }
-  console.log('[profile/page] raw profile:', { id: user.id, role: profile?.role })
 
   // Try the new `roles` array column (exists only after migration is applied)
   const { data: rolesRow } = await supabase
@@ -47,7 +46,7 @@ export default async function ProfilePage() {
     rolesFromColumn ??
     (profile?.role === 'organizer' ? ['consumer', 'publisher'] : ['consumer'])
 
-  console.log('[profile/page] derived roles:', roles, '| source:', rolesFromColumn ? 'roles column' : 'legacy role field')
+
 
   // Fetch publisher data only when the user has the publisher role
   let publisherData: PublisherData | null = null
