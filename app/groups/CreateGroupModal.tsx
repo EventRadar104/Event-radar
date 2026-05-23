@@ -40,15 +40,24 @@ export function CreateGroupModal({ userId, userDisplayName }: Props) {
     startTransition(async () => {
       const supabase = createClient()
 
-      const { data: group, error: insertErr } = await supabase
-        .from('groups')
-        .insert({
-          name: name.trim(),
-          creator_id: userId,
-          creator_name: userDisplayName ?? 'Unknown',
-        })
-        .select('id')
-        .single()
+      // Retry up to 5 times on invite_code unique-constraint collision (code 23505)
+      const MAX_RETRIES = 5
+      let group: { id: string } | null = null
+      let insertErr: { code?: string; message?: string } | null = null
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        const result = await supabase
+          .from('groups')
+          .insert({
+            name: name.trim(),
+            creator_id: userId,
+            creator_name: userDisplayName ?? 'Unknown',
+          })
+          .select('id')
+          .single()
+        group = result.data
+        insertErr = result.error
+        if (!insertErr || insertErr.code !== '23505') break
+      }
 
       if (insertErr || !group) {
         console.error('[CreateGroup] groups insert error:', insertErr)

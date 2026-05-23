@@ -39,6 +39,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
   const [addingEventId, setAddingEventId] = useState<string | null>(null)
   const [removingGroupEventId, setRemovingGroupEventId] = useState<string | null>(null)
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   // Sort events by current net vote score
   const sortedEvents = [...events].sort((a, b) => {
@@ -57,6 +58,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
   async function handleVote(groupEventId: string, eventId: string, direction: 'up' | 'down') {
     const current = votes[eventId] ?? { up: 0, down: 0, myVote: null }
     const supabase = createClient()
+    setActionError(null)
 
     if (current.myVote === direction) {
       // Toggle off — optimistic
@@ -75,7 +77,11 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
         .eq('voter_id', userId)
         .maybeSingle()
       if (existing) {
-        await supabase.from('group_votes').delete().eq('id', existing.id)
+        const { error } = await supabase.from('group_votes').delete().eq('id', existing.id)
+        if (error) {
+          setVotes(prev => ({ ...prev, [eventId]: current }))
+          setActionError('Vote update failed. Please try again.')
+        }
       }
     } else {
       const wasUp = current.myVote === 'up'
@@ -103,14 +109,21 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
         .eq('group_event_id', groupEventId)
         .eq('voter_id', userId)
         .maybeSingle()
+      let mutationError
       if (existing) {
-        await supabase.from('group_votes').update({ direction }).eq('id', existing.id)
+        const { error } = await supabase.from('group_votes').update({ direction }).eq('id', existing.id)
+        mutationError = error
       } else {
-        await supabase.from('group_votes').insert({
+        const { error } = await supabase.from('group_votes').insert({
           group_event_id: groupEventId,
           voter_id: userId,
           direction,
         })
+        mutationError = error
+      }
+      if (mutationError) {
+        setVotes(prev => ({ ...prev, [eventId]: current }))
+        setActionError('Vote update failed. Please try again.')
       }
     }
   }
@@ -134,8 +147,14 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
 
   async function handleRemoveMember(memberId: string) {
     setRemovingMemberId(memberId)
+    setActionError(null)
     const supabase = createClient()
-    await supabase.from('group_members').delete().eq('id', memberId)
+    const { error } = await supabase.from('group_members').delete().eq('id', memberId)
+    if (error) {
+      setActionError('Failed to remove member. Please try again.')
+      setRemovingMemberId(null)
+      return
+    }
     setMembers(prev => prev.filter(m => m.id !== memberId))
     setRemovingMemberId(null)
   }
@@ -206,6 +225,9 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
       setSearchQuery('')
       setSearchResults([])
       setShowAddEvent(false)
+      setActionError(null)
+    } else {
+      setActionError('Failed to add event. Please try again.')
     }
     setAddingEventId(null)
   }
@@ -214,6 +236,12 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
 
   return (
     <>
+      {actionError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#c0392b' }}>
+          {actionError}
+        </div>
+      )}
+
       {/* ── Events ────────────────────────────── */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
