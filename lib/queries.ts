@@ -179,41 +179,30 @@ export async function getGroupEventsWithDetails(groupId: string, userId: string)
   try {
     const supabase = await createClient()
 
-    const { data: groupEvents } = await supabase
+    type VoteRow = { voter_id: string; direction: string }
+    type EventRow = { id: string; title: string; slug: string | null; starts_at: string; cover_image_url: string | null; venue_name: string | null; venue_city: string | null }
+    type Row = { id: string; group_id: string; event_id: string; added_by: string; added_at: string; group_votes: VoteRow[]; events_with_details: EventRow | null }
+
+    const { data: rows, error } = await supabase
       .from('group_events')
-      .select('id, group_id, event_id, added_by, added_at')
+      .select(`
+        id, group_id, event_id, added_by, added_at,
+        group_votes ( voter_id, direction ),
+        events_with_details!event_id ( id, title, slug, starts_at, cover_image_url, venue_name, venue_city )
+      `)
       .eq('group_id', groupId)
 
-    if (!groupEvents || groupEvents.length === 0) return []
+    if (error) { console.error('getGroupEventsWithDetails error:', error); return [] }
+    if (!rows || rows.length === 0) return []
 
-    const groupEventIds = groupEvents.map(ge => ge.id)
-    const eventIds = groupEvents.map(ge => ge.event_id)
-
-    const [votesRes, eventDetailsRes] = await Promise.all([
-      supabase
-        .from('group_votes')
-        .select('group_event_id, voter_id, direction')
-        .in('group_event_id', groupEventIds),
-      supabase
-        .from('events_with_details')
-        .select('id, title, slug, starts_at, cover_image_url, venue_name, venue_city')
-        .in('id', eventIds),
-    ])
-
-    const eventMap: Record<string, { title: string; slug: string | null; starts_at: string; cover_image_url: string | null; venue_name: string | null; venue_city: string | null }> = {}
-    for (const e of eventDetailsRes.data ?? []) eventMap[e.id] = e
-
-    const voteMap: Record<string, { up: number; down: number; myVote: 'up' | 'down' | null }> = {}
-    for (const v of votesRes.data ?? []) {
-      if (!voteMap[v.group_event_id]) voteMap[v.group_event_id] = { up: 0, down: 0, myVote: null }
-      if (v.direction === 'up') voteMap[v.group_event_id].up++
-      if (v.direction === 'down') voteMap[v.group_event_id].down++
-      if (v.voter_id === userId) voteMap[v.group_event_id].myVote = v.direction as 'up' | 'down'
-    }
-
-    return groupEvents.map(ge => {
-      const ev = eventMap[ge.event_id]
-      const votes = voteMap[ge.id] ?? { up: 0, down: 0, myVote: null }
+    return (rows as unknown as Row[]).map(ge => {
+      const ev = ge.events_with_details
+      const votes = { up: 0, down: 0, myVote: null as 'up' | 'down' | null }
+      for (const v of ge.group_votes ?? []) {
+        if (v.direction === 'up') votes.up++
+        if (v.direction === 'down') votes.down++
+        if (v.voter_id === userId) votes.myVote = v.direction as 'up' | 'down'
+      }
       return {
         group_event_id: ge.id,
         group_id: ge.group_id,

@@ -204,20 +204,34 @@ export default function MapContent() {
     catFilter  ? { label: catFilter,  onRemove: () => { setCatFilter('');  setActiveVenueId(null) } } : null,
   ].filter((c): c is Chip => c !== null)
 
+  const initFiltersRef = useRef({
+    city:     cityFilter,
+    when:     whenFilter,
+    date:     dateFilter,
+    dateFrom: dateFromFilter,
+    dateTo:   dateToFilter,
+  })
+
   useEffect(() => {
     const supabase = createClient()
+    const { city, when, date, dateFrom, dateTo } = initFiltersRef.current
     setLoading(true)
-    supabase
+    let q = supabase
       .from('events_with_details')
       .select('id, title, slug, starts_at, is_free, price_from, cover_image_url, venue_id, venue_name, venue_city, venue_lat, venue_lng, category_slugs')
       .eq('status', 'published')
       .not('venue_lat', 'is', null)
       .not('venue_lng', 'is', null)
       .order('starts_at', { ascending: true })
-      .then(({ data }) => {
-        setAllEvents((data ?? []) as EventWithDetails[])
-        setLoading(false)
-      })
+    if (city) q = q.eq('venue_city', city)
+    const range = getDateRange(when, date, dateFrom, dateTo)
+    if (range) {
+      q = q.gte('starts_at', range.from.toISOString()).lte('starts_at', range.to.toISOString())
+    }
+    q.then(({ data }) => {
+      setAllEvents((data ?? []) as EventWithDetails[])
+      setLoading(false)
+    })
   }, [])
 
   useEffect(() => {
