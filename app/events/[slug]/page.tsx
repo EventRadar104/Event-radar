@@ -59,11 +59,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function EventDetailPage({ params }: PageProps) {
   const { slug } = await params
-  const [event, userState] = await Promise.all([
-    getEventBySlug(slug),
-    getUserEventState(slug),
-  ])
+  const event = await getEventBySlug(slug)
   if (!event) notFound()
+  const userState = await getUserEventState(event.id)
 
   let attendingCount = 0
   if (event.show_attending) {

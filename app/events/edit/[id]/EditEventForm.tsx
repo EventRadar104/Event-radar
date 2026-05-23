@@ -88,6 +88,7 @@ export function EditEventForm({ event, venue, currentCategoryId, allCategories, 
   const [removeImage, setRemoveImage] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -104,6 +105,7 @@ export function EditEventForm({ event, venue, currentCategoryId, allCategories, 
     if (!startsAt)     { setError('Start date & time is required'); return }
     setError('')
 
+    setIsSubmitting(true)
     startTransition(async () => {
       const supabase = createClient()
       const eventId = String(event.id)
@@ -120,6 +122,7 @@ export function EditEventForm({ event, venue, currentCategoryId, allCategories, 
           .upload(path, imgFile, { upsert: true, contentType: imgFile.type })
         if (uploadErr) {
           setError('Image upload failed. Please try again.')
+          setIsSubmitting(false)
           return
         }
         const { data: { publicUrl } } = supabase.storage
@@ -439,26 +442,26 @@ export function EditEventForm({ event, venue, currentCategoryId, allCategories, 
       <div style={{ display: 'flex', gap: 10 }}>
         <button
           onClick={() => handleSave(true)}
-          disabled={isPending}
+          disabled={isPending || isSubmitting}
           style={{
             flex: 1, padding: '13px 0',
             background: 'var(--green)', color: '#fff',
             border: 'none', borderRadius: 12,
             fontSize: 15, fontWeight: 500, cursor: 'pointer',
-            fontFamily: 'var(--font-sans)', opacity: isPending ? .6 : 1,
+            fontFamily: 'var(--font-sans)', opacity: isPending || isSubmitting ? .6 : 1,
           }}
         >
-          {isPending ? 'Saving…' : 'Save & publish'}
+          {isPending || isSubmitting ? 'Saving…' : 'Save & publish'}
         </button>
         <button
           onClick={() => handleSave(false)}
-          disabled={isPending}
+          disabled={isPending || isSubmitting}
           style={{
             flex: 1, padding: '13px 0',
             background: 'var(--stone)', color: 'var(--ink)',
             border: '1px solid var(--border)', borderRadius: 12,
             fontSize: 15, fontWeight: 500, cursor: 'pointer',
-            fontFamily: 'var(--font-sans)', opacity: isPending ? .6 : 1,
+            fontFamily: 'var(--font-sans)', opacity: isPending || isSubmitting ? .6 : 1,
           }}
         >
           Save as draft

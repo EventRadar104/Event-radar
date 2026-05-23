@@ -21,12 +21,14 @@ function writeSaved(ids: Set<string>) {
   localStorage.setItem(LS_KEY, JSON.stringify([...ids]))
 }
 
-export function SaveButton({ eventId, variant = 'card' }: Props) {
-  const [saved, setSaved] = useState(false)
+export function SaveButton({ eventId, initialSaved, variant = 'card' }: Props) {
+  const [saved, setSaved] = useState(initialSaved ?? false)
 
   useEffect(() => {
-    setSaved(readSaved().has(eventId))
-  }, [eventId])
+    if (initialSaved === undefined) {
+      setSaved(readSaved().has(eventId))
+    }
+  }, [eventId, initialSaved])
 
   function toggle(e: React.MouseEvent) {
     e.preventDefault()
