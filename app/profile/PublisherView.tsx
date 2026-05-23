@@ -382,7 +382,6 @@ function EditSheetContent({
 }) {
   const sheetActions = [
     { label: 'Edit details', href: `/events/edit/${event.event_id}`, icon: '✏️' },
-    { label: 'Change image', href: `/events/edit/${event.event_id}#image`, icon: '🖼' },
   ]
 
   return (
