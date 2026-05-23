@@ -37,6 +37,7 @@ export function CreateEventForm({ userId, categories }: Props) {
   const [imgFile, setImgFile]   = useState<File | null>(null)
   const [imgPreview, setImgPreview] = useState<string | null>(null)
   const [error, setError]       = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [step, setStep]         = useState(1)  // 1=Details, 2=Location, 3=Pricing
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -53,6 +54,7 @@ export function CreateEventForm({ userId, categories }: Props) {
     if (!startsAt)     { setError('Start date & time is required'); return }
     setError('')
 
+    setIsSubmitting(true)
     startTransition(async () => {
       const supabase = createClient()
 
@@ -67,6 +69,7 @@ export function CreateEventForm({ userId, categories }: Props) {
 
         if (uploadErr) {
           setError('Image upload failed. Please try again.')
+          setIsSubmitting(false)
           return
         }
         const { data: { publicUrl } } = supabase.storage
@@ -338,7 +341,7 @@ export function CreateEventForm({ userId, categories }: Props) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:20, background:'var(--white)', border:'1px solid var(--border)', borderRadius:12 }}>
         <span style={{ fontSize:13, color:'var(--ink3)' }}>
           Step {step} of 4 ·{' '}
-          <button onClick={() => handleSubmit(false)} disabled={isPending} style={{ background:'none', border:'none', color:'var(--green)', cursor:'pointer', fontSize:13, fontWeight:500, padding:0 }}>
+          <button onClick={() => handleSubmit(false)} disabled={isPending || isSubmitting} style={{ background:'none', border:'none', color:'var(--green)', cursor:'pointer', fontSize:13, fontWeight:500, padding:0 }}>
             Save as draft
           </button>
         </span>
@@ -353,8 +356,8 @@ export function CreateEventForm({ userId, categories }: Props) {
               Continue →
             </button>
           ) : (
-            <button onClick={() => handleSubmit(true)} disabled={isPending} style={{ padding:'11px 24px', background: isPending ? 'var(--border)' : 'var(--green)', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:500, cursor: isPending ? 'default' : 'pointer' }}>
-              {isPending ? 'Publishing…' : 'Publish event →'}
+            <button onClick={() => handleSubmit(true)} disabled={isPending || isSubmitting} style={{ padding:'11px 24px', background: isPending || isSubmitting ? 'var(--border)' : 'var(--green)', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:500, cursor: isPending || isSubmitting ? 'default' : 'pointer' }}>
+              {isPending || isSubmitting ? 'Publishing…' : 'Publish event →'}
             </button>
           )}
         </div>
