@@ -6,8 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { PublisherView } from './PublisherView'
 import { ConsumerView } from './ConsumerView'
 import { useT } from './i18n'
-import type { PublisherData } from './PublisherView'
+import type { PublisherData, EventStat } from './PublisherView'
 import type { Lang } from './i18n'
+import type { OrganizerEventStat } from '@/lib/types'
 
 type ProfileRole = 'consumer' | 'publisher'
 
@@ -80,27 +81,30 @@ export function ProfileClient({
         .order('starts_at', { ascending: false }),
     ])
 
-    const stats = statsRes.data ?? []
-    const statsMap = Object.fromEntries(stats.map((s: Record<string, unknown>) => [s.event_id, s]))
+    const stats = (statsRes.data ?? []) as OrganizerEventStat[]
+    const statsMap = Object.fromEntries(stats.map(s => [s.event_id, s]))
 
-    const events = (eventsRes.data ?? []).map((e: Record<string, unknown>) => ({
-      event_id: e.id as string,
-      title: e.title as string,
-      slug: (e.slug as string | null) ?? null,
-      starts_at: e.starts_at as string,
-      status: e.status as string,
-      venue_city: (e.venue_city as string | null) ?? null,
-      cover_image_url: (e.cover_image_url as string | null) ?? null,
-      views_30d: Number((statsMap[e.id as string] as Record<string, unknown>)?.views_30d ?? 0),
-      save_count: Number((statsMap[e.id as string] as Record<string, unknown>)?.save_count ?? 0),
-      rsvp_attending: Number((statsMap[e.id as string] as Record<string, unknown>)?.rsvp_attending ?? 0),
+    const events: EventStat[] = (eventsRes.data ?? []).map((e: {
+      id: string; title: string; slug: string | null; starts_at: string
+      status: string; venue_city: string | null; cover_image_url: string | null
+    }) => ({
+      event_id: e.id,
+      title: e.title,
+      slug: e.slug,
+      starts_at: e.starts_at,
+      status: e.status,
+      venue_city: e.venue_city,
+      cover_image_url: e.cover_image_url,
+      views_30d: statsMap[e.id]?.views_30d ?? 0,
+      save_count: statsMap[e.id]?.save_count ?? 0,
+      rsvp_attending: statsMap[e.id]?.rsvp_attending ?? 0,
     }))
 
     const newPublisherData: PublisherData = {
       events,
-      totalViews: stats.reduce((s: number, e: Record<string, unknown>) => s + Number(e.views_30d), 0),
-      totalSaves: stats.reduce((s: number, e: Record<string, unknown>) => s + Number(e.save_count), 0),
-      totalAttending: stats.reduce((s: number, e: Record<string, unknown>) => s + Number(e.rsvp_attending), 0),
+      totalViews: stats.reduce((s, e) => s + e.views_30d, 0),
+      totalSaves: stats.reduce((s, e) => s + e.save_count, 0),
+      totalAttending: stats.reduce((s, e) => s + e.rsvp_attending, 0),
       activeCount: events.filter(e => e.status === 'published').length,
     }
 
