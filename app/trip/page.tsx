@@ -25,6 +25,9 @@ export default function TripPage() {
   const [selectedCity,     setSelectedCity]     = useState<string | null>(null)
   const [selectedWhen,     setSelectedWhen]     = useState<string | null>(null)
   const [pickDate,         setPickDate]         = useState('')
+  const [dateMode,         setDateMode]         = useState<'specific' | 'range'>('specific')
+  const [pickDateFrom,     setPickDateFrom]     = useState('')
+  const [pickDateTo,       setPickDateTo]       = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [citySearch,       setCitySearch]       = useState('')
   const cityInputRef = useRef<HTMLInputElement>(null)
@@ -45,7 +48,14 @@ export default function TripPage() {
     const params = new URLSearchParams()
     if (selectedCity)                         params.set('city',     selectedCity)
     if (selectedWhen)                         params.set('when',     selectedWhen)
-    if (selectedWhen === 'date' && pickDate)  params.set('date',     pickDate)
+    if (selectedWhen === 'date' && dateMode === 'specific' && pickDate) {
+      params.set('date', pickDate)
+    }
+    if (selectedWhen === 'date' && dateMode === 'range') {
+      params.set('when', 'daterange')
+      if (pickDateFrom) params.set('datefrom', pickDateFrom)
+      if (pickDateTo)   params.set('dateto',   pickDateTo)
+    }
     if (selectedCategory)                     params.set('category', selectedCategory)
     const qs = params.toString()
     router.push(`/map${qs ? '?' + qs : ''}`)
@@ -231,21 +241,88 @@ export default function TripPage() {
             })}
           </div>
           {selectedWhen === 'date' && (
-            <input
-              type="date"
-              value={pickDate}
-              onChange={e => setPickDate(e.target.value)}
-              style={{
-                marginTop: 12,
-                padding: '9px 14px',
-                borderRadius: 10,
-                border: '1.5px solid var(--border)',
-                fontSize: 14,
-                background: 'var(--white)',
-                color: 'var(--ink)',
-                outline: 'none',
-              }}
-            />
+            <div style={{ marginTop: 12 }}>
+              {/* Specific / Range sub-toggle */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                {(['specific', 'range'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => setDateMode(mode)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      border: '1.5px solid',
+                      borderColor: dateMode === mode ? 'var(--green)' : 'var(--border)',
+                      background: dateMode === mode ? 'var(--green-lt)' : 'var(--white)',
+                      color: dateMode === mode ? 'var(--green)' : 'var(--ink)',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    {mode === 'specific' ? 'Specific date' : 'Date range'}
+                  </button>
+                ))}
+              </div>
+
+              {dateMode === 'specific' && (
+                <input
+                  type="date"
+                  value={pickDate}
+                  onChange={e => setPickDate(e.target.value)}
+                  style={{
+                    padding: '9px 14px',
+                    borderRadius: 10,
+                    border: '1.5px solid var(--border)',
+                    fontSize: 14,
+                    background: 'var(--white)',
+                    color: 'var(--ink)',
+                    outline: 'none',
+                  }}
+                />
+              )}
+
+              {dateMode === 'range' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>From</label>
+                    <input
+                      type="date"
+                      value={pickDateFrom}
+                      onChange={e => setPickDateFrom(e.target.value)}
+                      style={{
+                        padding: '9px 14px',
+                        borderRadius: 10,
+                        border: '1.5px solid var(--border)',
+                        fontSize: 14,
+                        background: 'var(--white)',
+                        color: 'var(--ink)',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>To</label>
+                    <input
+                      type="date"
+                      value={pickDateTo}
+                      min={pickDateFrom || undefined}
+                      onChange={e => setPickDateTo(e.target.value)}
+                      style={{
+                        padding: '9px 14px',
+                        borderRadius: 10,
+                        border: '1.5px solid var(--border)',
+                        fontSize: 14,
+                        background: 'var(--white)',
+                        color: 'var(--ink)',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
