@@ -100,7 +100,7 @@ export function EditEventForm({ event, venue, currentCategoryId, allCategories, 
     reader.readAsDataURL(file)
   }
 
-  async function handleSave(publish: boolean) {
+  async function handleSave(publish: boolean): Promise<void> {
     if (!title.trim()) { setError('Event title is required'); return }
     if (!startsAt)     { setError('Start date & time is required'); return }
     setError('')
