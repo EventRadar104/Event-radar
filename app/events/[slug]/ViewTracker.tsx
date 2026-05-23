@@ -26,7 +26,7 @@ export default function ViewTracker({ eventId, referrer }: Props) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventId, sessionId, referrer }),
-    }).catch(() => {})
+    }).catch((err) => { console.error('[ViewTracker] failed to record view:', err) })
   }, [eventId, referrer])
 
   return null

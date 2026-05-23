@@ -65,7 +65,10 @@ export function EventCard({ event }: EventCardProps) {
         }
         setSaved(true)
       }
-    } catch {}
+    } catch (err) {
+      console.error('[EventCard] corrupted save_event_intent in sessionStorage:', err)
+      sessionStorage.removeItem('save_event_intent')
+    }
   }, [event.id])
 
   async function handleHeart(e: React.MouseEvent) {
