@@ -1,21 +1,26 @@
+import { cache } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { NavSearch } from './NavSearch'
 import { NavPillLink } from './NavPillLink'
 
-export async function Nav() {
+// React.cache deduplicates this across all server components in the same render,
+// so multiple components calling getNavData() share one DB round trip per request.
+// Automatically invalidates on the next request after sign-in / sign-out.
+const getNavData = cache(async () => {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { user: null, avatarUrl: null }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('avatar_url')
+    .eq('id', user.id)
+    .single()
+  return { user, avatarUrl: profile?.avatar_url ?? null }
+})
 
-  let avatarUrl: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('avatar_url')
-      .eq('id', user.id)
-      .single()
-    avatarUrl = profile?.avatar_url ?? null
-  }
+export async function Nav() {
+  const { user, avatarUrl } = await getNavData()
 
   return (
     <nav style={{
