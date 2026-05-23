@@ -396,7 +396,7 @@ export async function getTrendingEvent() {
       .eq('hide_from_featured', false)
 
     if (!candidates || candidates.length === 0) return null
-    const byId = Object.fromEntries(candidates.map((e: EventWithDetails) => [e.id, e]))
+    const byId = Object.fromEntries(candidates.map(e => [e.id, e]))
     for (const id of rankedIds) {
       if (byId[id]) return byId[id] as EventWithDetails
     }
