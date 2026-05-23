@@ -204,7 +204,7 @@ export default async function EventDetailPage({ params }: PageProps) {
               <div style={{ fontSize:15, fontWeight:500, marginBottom:2 }}>{event.organizer_name}</div>
               <div style={{ fontSize:12, color:'var(--ink3)' }}>Organiser · Event Radar</div>
             </div>
-            {SHOW_FOLLOW_BUTTON && <button style={{ marginLeft:'auto', background:'none', border:'1.5px solid var(--border)', borderRadius:20, padding:'7px 14px', fontSize:13, cursor:'pointer' }}>Follow</button>}
+            {SHOW_FOLLOW_BUTTON && <button style={{ marginLeft:'auto', background:'none', border:'1.5px solid var(--border)', borderRadius:20, padding:'7px 14px', fontSize:13, cursor:'pointer', display:'none' }}>Follow</button>}
           </div>
         )}
       </div>
