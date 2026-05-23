@@ -7,6 +7,16 @@ export async function Nav() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  let avatarUrl: string | null = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .single()
+    avatarUrl = profile?.avatar_url ?? null
+  }
+
   return (
     <nav style={{
       position: 'sticky',
@@ -50,8 +60,13 @@ export async function Nav() {
 
         {/* Avatar / Sign in — always visible */}
         {user ? (
-          <Link href="/profile" style={{ width:32, height:32, borderRadius:'50%', background:'var(--green-lt)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--green)', textDecoration:'none', flexShrink:0 }}>
-            <svg viewBox="0 0 16 16" fill="none" width={16} height={16}><circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          <Link href="/profile" style={{ width:32, height:32, borderRadius:'50%', background:'var(--green-lt)', border:'1.5px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--green)', textDecoration:'none', flexShrink:0, overflow:'hidden' }}>
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="Profile" style={{ width:32, height:32, objectFit:'cover' }} />
+            ) : (
+              <svg viewBox="0 0 16 16" fill="none" width={16} height={16}><circle cx="8" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+            )}
           </Link>
         ) : (
           <Link href="/sign-in" style={{ fontSize:14, color:'var(--ink2)', padding:'6px 10px', borderRadius:8, whiteSpace:'nowrap', textDecoration:'none' }}>
