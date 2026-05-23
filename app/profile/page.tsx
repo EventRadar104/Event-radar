@@ -15,26 +15,20 @@ export default async function ProfilePage() {
 
   if (!user) redirect('/sign-in?redirect=/profile')
 
-  // Select only stable columns — the `roles` text[] column was added by migration
-  // 20260522000000 but may not be applied on the target DB. Querying a missing
-  // column causes Supabase to return { data: null }, which breaks the whole page.
-  // We read `roles` in a separate, error-tolerant call below.
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('display_name, avatar_url, role')
-    .eq('id', user.id)
-    .single()
+  // Both queries target the same table but select different columns.
+  // Keeping them separate preserves the error-isolation strategy (a missing
+  // `roles` column on older DBs returns null without breaking the stable query).
+  const [
+    { data: profile, error: profileError },
+    { data: rolesRow },
+  ] = await Promise.all([
+    supabase.from('profiles').select('display_name, avatar_url, role').eq('id', user.id).single(),
+    supabase.from('profiles').select('roles').eq('id', user.id).single(),
+  ])
 
   if (profileError) {
     console.error('[profile/page] profile query error:', profileError.message)
   }
-
-  // Try the new `roles` array column (exists only after migration is applied)
-  const { data: rolesRow } = await supabase
-    .from('profiles')
-    .select('roles')
-    .eq('id', user.id)
-    .single()
 
   const rolesFromColumn =
     Array.isArray(rolesRow?.roles) && (rolesRow.roles as string[]).length > 0
@@ -45,8 +39,6 @@ export default async function ProfilePage() {
   const roles: ('consumer' | 'publisher')[] =
     rolesFromColumn ??
     (profile?.role === 'organizer' ? ['consumer', 'publisher'] : ['consumer'])
-
-
 
   // Fetch publisher data only when the user has the publisher role
   let publisherData: PublisherData | null = null
