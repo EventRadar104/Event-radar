@@ -2,17 +2,20 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { getEventBySlug, getUserEventState } from '@/lib/queries'
-
-import { createClient } from '@/lib/supabase/server'
+import dynamic from 'next/dynamic'
+import { getEventBySlug, getUserEventState, getRsvpCount } from '@/lib/queries'
 import type { RsvpStatus } from '@/lib/types'
 import { SaveButton } from '@/components/SaveButton'
 import { ShareButton } from '@/components/ShareButton'
-import { AddToGroupButton } from '@/components/AddToGroupModal'
 import { RsvpButton } from '@/components/RsvpButton'
 import { BackButton } from '@/components/BackButton'
 import ViewTracker from './ViewTracker'
 import { getTicketUrl } from '@/lib/affiliate'
+
+// Lazy-loaded: only needed when the user clicks "Add to group"
+const AddToGroupButton = dynamic(
+  () => import('@/components/AddToGroupModal').then(m => ({ default: m.AddToGroupButton }))
+)
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -60,18 +63,11 @@ export default async function EventDetailPage({ params }: PageProps) {
   const { slug } = await params
   const event = await getEventBySlug(slug)
   if (!event) notFound()
-  const userState = await getUserEventState(event.id)
 
-  let attendingCount = 0
-  if (event.show_attending) {
-    const supabase = await createClient()
-    const { count } = await supabase
-      .from('rsvps')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', event.id)
-      .eq('status', 'attending')
-    attendingCount = count ?? 0
-  }
+  const [userState, attendingCount] = await Promise.all([
+    getUserEventState(event.id),
+    event.show_attending ? getRsvpCount(event.id) : Promise.resolve(0),
+  ])
 
   const price = event.is_free
     ? { text: 'Free', free: true }
