@@ -36,7 +36,7 @@ export async function searchEvents(params: SearchParams = {}) {
     if (results.length === 0 && params.q) {
       const { data: venueData } = await supabase
         .from('events_with_details')
-        .select('*')
+        .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
         .eq('status', 'published')
         .ilike('venue_name', `%${params.q}%`)
         .gte('starts_at', params.from || new Date().toISOString())
@@ -57,7 +57,7 @@ export async function getEventBySlug(slug: string) {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('events_with_details')
-      .select('*')
+      .select('id, slug, title, description, starts_at, ends_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, show_attending, tags, organizer_name, category_slugs, category_names, status')
       .eq('slug', slug)
       .eq('status', 'published')
       .single()
@@ -111,7 +111,7 @@ export async function getUserGroups(userId: string): Promise<GroupWithCounts[]> 
     if (groupIds.length === 0) return []
 
     const [groupsRes, membersRes, eventsRes] = await Promise.all([
-      supabase.from('groups').select('*').in('id', groupIds).order('created_at', { ascending: false }),
+      supabase.from('groups').select('id, name, invite_code, cover_image_url, creator_id, creator_name, scope_city, scope_date, scope_cat, created_at, updated_at').in('id', groupIds).order('created_at', { ascending: false }),
       supabase.from('group_members').select('group_id').in('group_id', groupIds),
       supabase.from('group_events').select('group_id').in('group_id', groupIds),
     ])
@@ -137,7 +137,7 @@ export async function getGroupById(id: string) {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('groups')
-      .select('*')
+      .select('id, name, invite_code, cover_image_url, creator_id, creator_name, scope_city, scope_date, scope_cat, created_at, updated_at')
       .eq('id', id)
       .single()
     if (error) return null
@@ -272,7 +272,7 @@ export async function getOrganizerStats() {
     if (!user) return []
     const { data, error } = await supabase
       .from('organizer_event_stats')
-      .select('*')
+      .select('event_id, views_30d, save_count, rsvp_attending')
       .eq('organizer_id', user.id)
       .order('starts_at', { ascending: true })
     if (error) {
@@ -369,31 +369,26 @@ export async function getTrendingEvent() {
   try {
     const supabase = await createClient()
 
-    const { data: cat } = await supabase
-      .from('categories').select('id').eq('slug', 'concerts-music').maybeSingle()
-    let musicIds: string[] = []
-    if (cat?.id) {
-      const { data: catData } = await supabase
-        .from('event_categories').select('event_id').eq('category_id', cat.id)
-      musicIds = (catData ?? []).map((r: { event_id: string }) => r.event_id)
-    }
+    // Fetch category+event_ids and stats in parallel (2 round trips instead of 4)
+    type CatRow = { id: string; event_categories: Array<{ event_id: string }> }
+    const [catRes, statsRes] = await Promise.all([
+      supabase.from('categories').select('id, event_categories(event_id)').eq('slug', 'concerts-music').maybeSingle(),
+      supabase.from('organizer_event_stats').select('event_id, views_total, save_count').order('views_total', { ascending: false }).limit(50),
+    ])
+    const musicIds = ((catRes.data as CatRow | null)?.event_categories ?? []).map(r => r.event_id)
     const useMusicFilter = musicIds.length >= 5
 
-    let statsQuery = supabase
-      .from('organizer_event_stats')
-      .select('event_id, views_total, save_count')
-      .order('views_total', { ascending: false })
-      .limit(21)
-    if (useMusicFilter) statsQuery = statsQuery.in('event_id', musicIds)
-    const { data: stats } = await statsQuery
-    if (!stats || stats.length === 0) return null
+    let stats = (statsRes.data ?? []) as Array<{ event_id: string; views_total: number; save_count: number }>
+    if (useMusicFilter) stats = stats.filter(s => musicIds.includes(s.event_id))
+    if (stats.length === 0) return null
 
     const rankedIds = stats
       .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
       .map(s => s.event_id)
+
     const { data: candidates } = await supabase
       .from('events_with_details')
-      .select('*')
+      .select('id, slug, title, description, starts_at, ends_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, show_attending, organizer_name, category_slugs, category_names, status')
       .in('id', rankedIds)
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
@@ -416,24 +411,18 @@ export async function getHotEvents(excludeId = '', limit = 10, page = 1) {
     const supabase = await createClient()
     const offset = (page - 1) * limit
 
-    const { data: cat } = await supabase
-      .from('categories').select('id').eq('slug', 'concerts-music').maybeSingle()
-    let musicIds: string[] = []
-    if (cat?.id) {
-      const { data: catData } = await supabase
-        .from('event_categories').select('event_id').eq('category_id', cat.id)
-      musicIds = (catData ?? []).map((r: { event_id: string }) => r.event_id)
-    }
+    // Fetch category+event_ids and stats in parallel (2 round trips instead of 4)
+    type CatRow = { id: string; event_categories: Array<{ event_id: string }> }
+    const [catRes, statsRes] = await Promise.all([
+      supabase.from('categories').select('id, event_categories(event_id)').eq('slug', 'concerts-music').maybeSingle(),
+      supabase.from('organizer_event_stats').select('event_id, views_total, save_count').order('views_total', { ascending: false }).limit(50),
+    ])
+    const musicIds = ((catRes.data as CatRow | null)?.event_categories ?? []).map(r => r.event_id)
     const useMusicFilter = musicIds.length >= 5
 
-    let statsQuery = supabase
-      .from('organizer_event_stats')
-      .select('event_id, views_total, save_count')
-      .order('views_total', { ascending: false })
-      .limit(21)
-    if (useMusicFilter) statsQuery = statsQuery.in('event_id', musicIds)
-    const { data: stats } = await statsQuery
-    if (!stats || stats.length === 0) return []
+    let stats = (statsRes.data ?? []) as Array<{ event_id: string; views_total: number; save_count: number }>
+    if (useMusicFilter) stats = stats.filter(s => musicIds.includes(s.event_id))
+    if (stats.length === 0) return []
 
     const rankedIds = stats
       .sort((a, b) => (b.views_total + b.save_count) - (a.views_total + a.save_count))
@@ -441,9 +430,10 @@ export async function getHotEvents(excludeId = '', limit = 10, page = 1) {
       .filter(id => id !== excludeId)
       .slice(offset, offset + limit)
     if (rankedIds.length === 0) return []
+
     const { data } = await supabase
       .from('events_with_details')
-      .select('*')
+      .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
       .in('id', rankedIds)
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
@@ -473,7 +463,7 @@ export async function getWeekendEvents(limit = 10, page = 1) {
     const offset = (page - 1) * limit
     const { data } = await supabase
       .from('events_with_details')
-      .select('*')
+      .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
       .eq('status', 'published')
       .gte('starts_at', sat.toISOString())
       .lte('starts_at', sun.toISOString())
@@ -490,7 +480,7 @@ export async function getFreeEvents(limit = 10) {
     const supabase = await createClient()
     const { data } = await supabase
       .from('events_with_details')
-      .select('*')
+      .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
       .eq('status', 'published')
       .eq('is_free', true)
       .gt('starts_at', new Date().toISOString())
@@ -506,7 +496,7 @@ export async function getEventsByIds(ids: string[]): Promise<EventWithDetails[]>
     const supabase = await createClient()
     const { data } = await supabase
       .from('events_with_details')
-      .select('*')
+      .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
       .in('id', ids)
       .eq('status', 'published')
     return (data ?? []) as EventWithDetails[]
@@ -520,7 +510,7 @@ export async function getDiscoverEvents(limit = 50, offset = 0) {
     const supabase = await createClient()
     const { data } = await supabase
       .from('events_with_details')
-      .select('*')
+      .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
       .eq('status', 'published')
       .gt('starts_at', new Date().toISOString())
       .order('starts_at', { ascending: true })
