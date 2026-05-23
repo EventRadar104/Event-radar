@@ -48,7 +48,12 @@ function groupByVenue(events: EventWithDetails[]): VenueGroup[] {
   return Array.from(map.values())
 }
 
-function getDateRange(when: string, pickDate: string): { from: Date; to: Date } | null {
+function getDateRange(
+  when: string,
+  pickDate: string,
+  dateFrom = '',
+  dateTo = '',
+): { from: Date; to: Date } | null {
   const now = new Date()
   if (when === 'weekend') {
     const day = now.getDay()
@@ -73,6 +78,11 @@ function getDateRange(when: string, pickDate: string): { from: Date; to: Date } 
       from: new Date(pickDate + 'T00:00:00'),
       to:   new Date(pickDate + 'T23:59:59'),
     }
+  }
+  if (when === 'daterange') {
+    const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : now
+    const to   = dateTo   ? new Date(dateTo   + 'T23:59:59') : new Date(from.getTime() + 365 * 24 * 60 * 60 * 1000)
+    return { from, to }
   }
   return null
 }
@@ -127,10 +137,12 @@ function makeVenueMarkerIcon(count: number, active: boolean, g: any) {
 export default function MapContent() {
   const searchParams = useSearchParams()
 
-  const [cityFilter, setCityFilter] = useState(searchParams.get('city')     ?? '')
-  const [whenFilter, setWhenFilter] = useState(searchParams.get('when')     ?? '')
-  const [dateFilter, setDateFilter] = useState(searchParams.get('date')     ?? '')
-  const [catFilter,  setCatFilter]  = useState(searchParams.get('category') ?? '')
+  const [cityFilter,     setCityFilter]     = useState(searchParams.get('city')     ?? '')
+  const [whenFilter,     setWhenFilter]     = useState(searchParams.get('when')     ?? '')
+  const [dateFilter,     setDateFilter]     = useState(searchParams.get('date')     ?? '')
+  const [dateFromFilter, setDateFromFilter] = useState(searchParams.get('datefrom') ?? '')
+  const [dateToFilter,   setDateToFilter]   = useState(searchParams.get('dateto')   ?? '')
+  const [catFilter,      setCatFilter]      = useState(searchParams.get('category') ?? '')
 
   const mapDivRef  = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,7 +159,7 @@ export default function MapContent() {
     if (cityFilter) {
       evs = evs.filter(e => e.venue_city?.toLowerCase() === cityFilter.toLowerCase())
     }
-    const range = getDateRange(whenFilter, dateFilter)
+    const range = getDateRange(whenFilter, dateFilter, dateFromFilter, dateToFilter)
     if (range) {
       evs = evs.filter(e => {
         const t = new Date(e.starts_at)
@@ -160,7 +172,7 @@ export default function MapContent() {
       )
     }
     return evs
-  }, [allEvents, cityFilter, whenFilter, dateFilter, catFilter])
+  }, [allEvents, cityFilter, whenFilter, dateFilter, dateFromFilter, dateToFilter, catFilter])
 
   const venueGroups = useMemo(() => groupByVenue(filteredEvents), [filteredEvents])
 
@@ -174,6 +186,7 @@ export default function MapContent() {
     whenFilter === 'weekend' ? 'Weekend'
       : whenFilter === 'week' ? 'This week'
       : whenFilter === 'date' && dateFilter ? dateFilter
+      : whenFilter === 'daterange' ? [dateFromFilter, dateToFilter].filter(Boolean).join(' – ') || 'Date range'
       : null,
   ].filter((x): x is string => x !== null)
   const pageTitle = titleParts.length > 0 ? titleParts.join(' · ') : 'All events'
@@ -182,8 +195,11 @@ export default function MapContent() {
   const chips: Chip[] = [
     cityFilter ? { label: cityFilter, onRemove: () => { setCityFilter(''); setActiveVenueId(null) } } : null,
     whenFilter ? {
-      label: whenFilter === 'weekend' ? 'Weekend' : whenFilter === 'week' ? 'This week' : dateFilter || 'Date',
-      onRemove: () => { setWhenFilter(''); setDateFilter(''); setActiveVenueId(null) },
+      label: whenFilter === 'weekend' ? 'Weekend'
+        : whenFilter === 'week' ? 'This week'
+        : whenFilter === 'daterange' ? [dateFromFilter, dateToFilter].filter(Boolean).join(' – ') || 'Date range'
+        : dateFilter || 'Date',
+      onRemove: () => { setWhenFilter(''); setDateFilter(''); setDateFromFilter(''); setDateToFilter(''); setActiveVenueId(null) },
     } : null,
     catFilter  ? { label: catFilter,  onRemove: () => { setCatFilter('');  setActiveVenueId(null) } } : null,
   ].filter((c): c is Chip => c !== null)
