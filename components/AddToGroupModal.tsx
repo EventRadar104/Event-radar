@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { GroupWithCounts } from '@/lib/types'
@@ -38,54 +38,61 @@ function AddToGroupModal({ eventId, onClose }: { eventId: string; onClose: () =>
   const [adding, setAdding] = useState<string | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  const loadGroups = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-      setIsLoggedIn(false)
+      if (cancelled) return
+      if (!user) {
+        setIsLoggedIn(false)
+        setLoading(false)
+        return
+      }
+      setIsLoggedIn(true)
+
+      const { data: memberships } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', user.id)
+
+      const groupIds = (memberships ?? []).map(m => m.group_id)
+
+      if (cancelled) return
+      if (groupIds.length === 0) {
+        setGroups([])
+        setLoading(false)
+        return
+      }
+
+      const [groupsRes, membersRes, eventsRes, alreadyRes] = await Promise.all([
+        supabase.from('groups').select('*').in('id', groupIds).order('created_at', { ascending: false }),
+        supabase.from('group_members').select('group_id').in('group_id', groupIds),
+        supabase.from('group_events').select('group_id').in('group_id', groupIds),
+        supabase.from('group_events').select('group_id').in('group_id', groupIds).eq('event_id', eventId),
+      ])
+
+      if (cancelled) return
+
+      const memberCountMap: Record<string, number> = {}
+      const eventCountMap: Record<string, number> = {}
+      for (const m of membersRes.data ?? []) memberCountMap[m.group_id] = (memberCountMap[m.group_id] ?? 0) + 1
+      for (const e of eventsRes.data ?? []) eventCountMap[e.group_id] = (eventCountMap[e.group_id] ?? 0) + 1
+
+      const alreadySet = new Set((alreadyRes.data ?? []).map(r => r.group_id))
+      setAddedGroups(alreadySet)
+
+      setGroups((groupsRes.data ?? []).map(g => ({
+        ...g,
+        member_count: memberCountMap[g.id] ?? 0,
+        event_count: eventCountMap[g.id] ?? 0,
+      })) as GroupWithCounts[])
       setLoading(false)
-      return
     }
-    setIsLoggedIn(true)
-
-    const { data: memberships } = await supabase
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', user.id)
-
-    const groupIds = (memberships ?? []).map(m => m.group_id)
-
-    if (groupIds.length === 0) {
-      setGroups([])
-      setLoading(false)
-      return
-    }
-
-    const [groupsRes, membersRes, eventsRes, alreadyRes] = await Promise.all([
-      supabase.from('groups').select('*').in('id', groupIds).order('created_at', { ascending: false }),
-      supabase.from('group_members').select('group_id').in('group_id', groupIds),
-      supabase.from('group_events').select('group_id').in('group_id', groupIds),
-      supabase.from('group_events').select('group_id').in('group_id', groupIds).eq('event_id', eventId),
-    ])
-
-    const memberCountMap: Record<string, number> = {}
-    const eventCountMap: Record<string, number> = {}
-    for (const m of membersRes.data ?? []) memberCountMap[m.group_id] = (memberCountMap[m.group_id] ?? 0) + 1
-    for (const e of eventsRes.data ?? []) eventCountMap[e.group_id] = (eventCountMap[e.group_id] ?? 0) + 1
-
-    const alreadySet = new Set((alreadyRes.data ?? []).map(r => r.group_id))
-    setAddedGroups(alreadySet)
-
-    setGroups((groupsRes.data ?? []).map(g => ({
-      ...g,
-      member_count: memberCountMap[g.id] ?? 0,
-      event_count: eventCountMap[g.id] ?? 0,
-    })) as GroupWithCounts[])
-    setLoading(false)
+    load()
+    return () => { cancelled = true }
   }, [eventId])
-
-  useEffect(() => { loadGroups() }, [loadGroups])
 
   async function handleAdd(groupId: string) {
     setAdding(groupId)
