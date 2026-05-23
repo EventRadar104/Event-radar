@@ -65,12 +65,14 @@ export function CreateEventForm({ userId, categories }: Props) {
           .from('event-images')
           .upload(path, imgFile, { upsert: true, contentType: imgFile.type })
 
-        if (!uploadErr) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('event-images')
-            .getPublicUrl(path)
-          coverUrl = publicUrl
+        if (uploadErr) {
+          setError('Image upload failed. Please try again.')
+          return
         }
+        const { data: { publicUrl } } = supabase.storage
+          .from('event-images')
+          .getPublicUrl(path)
+        coverUrl = publicUrl
       }
 
       // 2. Find or create venue
