@@ -61,7 +61,7 @@ export function CreateGroupModal({ userId, userDisplayName }: Props) {
 
       if (insertErr || !group) {
         console.error('[CreateGroup] groups insert error:', insertErr)
-        setError(insertErr?.message ?? 'Could not create group. Check Supabase RLS policies.')
+        setError(insertErr?.message ?? 'Something went wrong. Please try again.')
         return
       }
 
