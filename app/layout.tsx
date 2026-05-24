@@ -4,6 +4,7 @@ import './globals.css'
 import { Nav } from '@/components/Nav'
 import { MobileTabBar } from '@/components/MobileTabBar'
 import { CookieBanner } from '@/components/CookieBanner'
+import { Analytics } from '@vercel/analytics/react'
 
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
@@ -60,6 +61,7 @@ export default function RootLayout({
         </main>
         <MobileTabBar />
         <CookieBanner />
+        <Analytics />
       </body>
     </html>
   )
