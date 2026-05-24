@@ -444,8 +444,8 @@ function VenueBottomSheet({
   const sheetRef = useRef<HTMLDivElement>(null)
   const listRef  = useRef<HTMLDivElement>(null)
 
-  // 0 = collapsed, 1 = half, 2 = full
-  const [snapIdx, setSnapIdx]         = useState<0 | 1 | 2>(0)
+  // 0 = collapsed/peeking, 2 = fully open
+  const [snapIdx, setSnapIdx]         = useState<0 | 2>(0)
   const [liveTranslate, setLiveTrans] = useState<number | null>(null)
   // Enter animation: start off-screen, transition to collapsed
   const [entered, setEntered]         = useState(false)
@@ -472,27 +472,16 @@ function VenueBottomSheet({
     return sheetRef.current?.offsetHeight ?? window.innerHeight - 60
   }
 
-  function snapPx(idx: 0 | 1 | 2): number {
+  function snapPx(idx: 0 | 2): number {
     const h = shH()
     if (idx === 2) return 0
-    if (idx === 1) return h * 0.5
     return h - PEEK_PX
   }
 
-  function nearestSnap(t: number): 0 | 1 | 2 {
+  function nearestSnap(t: number): 0 | 2 {
     const h = shH()
-    const pts: Array<[number, 0 | 1 | 2]> = [
-      [h - PEEK_PX, 0],
-      [h * 0.5,     1],
-      [0,           2],
-    ]
-    let best: 0 | 1 | 2 = 0
-    let bestDist = Infinity
-    for (const [pt, idx] of pts) {
-      const d = Math.abs(t - pt)
-      if (d < bestDist) { bestDist = d; best = idx }
-    }
-    return best
+    const mid = (h - PEEK_PX) / 2
+    return t > mid ? 0 : 2
   }
 
   function onDragStart(e: React.PointerEvent) {
@@ -527,9 +516,8 @@ function VenueBottomSheet({
   } as const
 
   // CSS snap values — CSS calc avoids needing to know the pixel height
-  const snapCSS: Record<0 | 1 | 2, string> = {
+  const snapCSS: Record<0 | 2, string> = {
     0: `translateY(calc(100% - ${PEEK_PX}px))`,
-    1: 'translateY(50%)',
     2: 'translateY(0%)',
   }
 
