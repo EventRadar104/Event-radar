@@ -285,6 +285,11 @@ export function ConsumerView({
         borderRadius: 16, overflow: 'hidden',
       }}>
         <SettingsRow
+          icon="ti-mail"
+          label="Contact us"
+          href="/contact"
+        />
+        <SettingsRow
           icon="ti-bell"
           label={t.notifications}
           onClick={() => setActiveSheet('notifications')}

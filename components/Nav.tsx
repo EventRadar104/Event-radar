@@ -54,6 +54,7 @@ export async function Nav() {
         {/* Secondary links — hidden on mobile */}
         <div className="nav-hide-mobile" style={{ display:'flex', alignItems:'center', gap:8 }}>
           <NavPillLink href="/trip">Plan a trip</NavPillLink>
+          <NavPillLink href="/contact">Contact</NavPillLink>
           {user && <NavPillLink href="/saved"><span>♡</span> Saved</NavPillLink>}
           {user && <NavPillLink href="/groups">Groups</NavPillLink>}
         </div>
