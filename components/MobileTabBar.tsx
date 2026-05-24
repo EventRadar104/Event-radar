@@ -23,9 +23,7 @@ export function MobileTabBar() {
         left: 0,
         right: 0,
         zIndex: 1000,
-        background: 'rgba(250,250,248,.96)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        background: '#FAFAF8',
         borderTop: '1px solid var(--border)',
         padding: '6px 0 env(safe-area-inset-bottom, 12px)',
       }}
