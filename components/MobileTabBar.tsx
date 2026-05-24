@@ -11,46 +11,21 @@ const tabs = [
   { href: '/trip',   label: 'Trip',    icon: 'ti-map'       },
 ]
 
-const HIDE_THRESHOLD = 50   // px scrolled down continuously before hiding
-const SHOW_THRESHOLD = 20   // px scrolled up continuously before showing
-const DEBOUNCE_MS     = 100 // ms to wait after last scroll event
-
 export function MobileTabBar() {
   const pathname = usePathname()
   const [hidden, setHidden] = useState(false)
-  // Y position at the last state change — used to measure continuous distance
-  const baseY   = useRef(0)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastY    = useRef(0)
 
   useEffect(() => {
     const onScroll = () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        const y = window.scrollY
-        const delta = y - baseY.current
-
-        if (y === 0) {
-          // Always show at the very top
-          setHidden(false)
-          baseY.current = 0
-          return
-        }
-
-        if (delta > HIDE_THRESHOLD) {
-          setHidden(true)
-          baseY.current = y
-        } else if (delta < -SHOW_THRESHOLD) {
-          setHidden(false)
-          baseY.current = y
-        }
-      }, DEBOUNCE_MS)
+      const y = window.scrollY
+      const delta = y - lastY.current
+      lastY.current = y
+      if (delta > 0) setHidden(true)
+      else if (delta < 0) setHidden(false)
     }
-
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   return (
@@ -67,7 +42,7 @@ export function MobileTabBar() {
         borderTop: '1px solid var(--border)',
         padding: '6px 0 env(safe-area-inset-bottom, 12px)',
         transform: hidden ? 'translateY(100%)' : 'translateY(0)',
-        transition: 'transform .25s ease',
+        transition: 'transform .2s ease',
         willChange: 'transform',
       }}
       className="mobile-tab-bar"
