@@ -29,11 +29,12 @@ function getCategorySlug(classifications) {
 
 function makeSlug(title, id) {
   const base = title.toLowerCase()
+    .replace(/[æ]/g, 'ae').replace(/[ø]/g, 'oe').replace(/[å]/g, 'aa')
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
     .slice(0, 50)
-  return `${base}-${id.slice(-8)}`
+  return `${base}-${id.slice(-8).toLowerCase()}`
 }
 
 async function fetchPage(page) {
