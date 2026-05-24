@@ -5,6 +5,7 @@ import { Nav } from '@/components/Nav'
 import { MobileTabBar } from '@/components/MobileTabBar'
 import { CookieBanner } from '@/components/CookieBanner'
 import { Analytics } from '@vercel/analytics/react'
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
@@ -49,6 +50,7 @@ export default function RootLayout({
   return (
     <html lang="nb" className={`${instrumentSerif.variable} ${inter.variable}`}>
       <head>
+        <link rel="manifest" href="/manifest.json" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
@@ -62,6 +64,7 @@ export default function RootLayout({
         <MobileTabBar />
         <CookieBanner />
         <Analytics />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   )
