@@ -27,10 +27,10 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
   },
-  description: 'Concerts, sports, food, art and more — across every city in Norway.',
+  description: 'Event Radar is Norway\'s event discovery platform. Find concerts, sports, food festivals, art exhibitions and outdoor activities across every city in Norway.',
   openGraph: {
     title: 'Event Radar — Find events in Norway',
-    description: 'Concerts, sports, food, art and more — across every city in Norway.',
+    description: 'Event Radar is Norway\'s event discovery platform. Find concerts, sports, food festivals, art exhibitions and outdoor activities across every city in Norway.',
     url: 'https://eventradar.no',
     siteName: 'Event Radar',
     images: [
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Event Radar — Find events in Norway',
-    description: 'Concerts, sports, food, art and more — across every city in Norway.',
+    description: 'Event Radar is Norway\'s event discovery platform. Find concerts, sports, food festivals, art exhibitions and outdoor activities across every city in Norway.',
     images: ['https://eventradar.no/og-image.png'],
   },
   other: {
