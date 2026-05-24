@@ -33,6 +33,7 @@ export const metadata: Metadata = {
   },
   other: {
     'impact-site-verification': '787be7d9-82e4-4097-9fbd-af6b3a2433ca',
+    'google-site-verification': '0tfm0RyyBVoj7H2d3OcWzdRGbEMDbsu95_8CdgcTk8I',
   },
 }
 
