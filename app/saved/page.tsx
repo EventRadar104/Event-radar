@@ -79,7 +79,7 @@ export default function SavedPage() {
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 24px 100px' }}>
-      <h1 style={{ fontSize: 'clamp(22px,3vw,32px)', marginBottom: 8 }}>Lagrede arrangementer</h1>
+      <h1 style={{ fontSize: 'clamp(22px,3vw,32px)', marginBottom: 8 }}>Saved events</h1>
 
       {events === null && <SavedEventsSkeleton />}
 
@@ -87,13 +87,13 @@ export default function SavedPage() {
         <div style={{ marginTop: 48, textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>♡</div>
           <p style={{ color: 'var(--ink2)', marginBottom: 24 }}>
-            Du har ikke lagret noen arrangementer ennå.
+            You haven&apos;t saved any events yet.
           </p>
           <Link
             href="/"
             style={{ background: 'var(--ink)', color: '#fff', borderRadius: 40, padding: '10px 22px', fontSize: 14, fontWeight: 500, textDecoration: 'none' }}
           >
-            Utforsk arrangementer
+            Explore events
           </Link>
         </div>
       )}

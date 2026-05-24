@@ -21,12 +21,12 @@ function categoryToPhClass(slugs: string[] | null): string {
 
 function formatPrice(event: EventWithDetails): string {
   if (event.price_from && event.price_to) return `${event.price_from}–${event.price_to} kr`
-  if (event.price_from) return `fra ${event.price_from} kr`
-  return 'Se billetter'
+  if (event.price_from) return `from ${event.price_from} kr`
+  return 'Get tickets'
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('nb-NO', {
+  return new Date(iso).toLocaleDateString('en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -116,7 +116,7 @@ export function EventCard({ event }: EventCardProps) {
         <div className="event-card-foot">
           {event.is_free ? (
             <>
-              <span className="badge-free">Gratis</span>
+              <span className="badge-free">Free</span>
               {event.ticket_url ? (
                 <a
                   href={event.ticket_url}
@@ -126,10 +126,10 @@ export function EventCard({ event }: EventCardProps) {
                   onClick={e => e.stopPropagation()}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  Se arrangement
+                  See event
                 </a>
               ) : (
-                <span className="meetup-text">Bare møt opp</span>
+                <span className="meetup-text">Just show up</span>
               )}
             </>
           ) : (
@@ -144,7 +144,7 @@ export function EventCard({ event }: EventCardProps) {
                   onClick={e => e.stopPropagation()}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>
-                  Billetter
+                  Tickets
                 </a>
               ) : (
                 <a
@@ -153,7 +153,7 @@ export function EventCard({ event }: EventCardProps) {
                   onClick={e => e.stopPropagation()}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  Se arrangement
+                  See event
                 </a>
               )}
             </>

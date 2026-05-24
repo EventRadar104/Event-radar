@@ -4,15 +4,15 @@ import Image from 'next/image'
 import type { EventWithDetails } from '@/lib/types'
 
 function formatPrice(event: EventWithDetails): string {
-  if (event.is_free) return 'Gratis'
+  if (event.is_free) return 'Free'
   if (event.price_from && event.price_to) return `${event.price_from}–${event.price_to} kr`
-  if (event.price_from) return `fra ${event.price_from} kr`
-  if (event.ticket_url) return 'Se billetter'
-  return 'Se arrangør'
+  if (event.price_from) return `from ${event.price_from} kr`
+  if (event.ticket_url) return 'Get tickets'
+  return 'See organiser'
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('nb-NO', {
+  return new Date(iso).toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 }

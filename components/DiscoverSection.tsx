@@ -53,7 +53,7 @@ export function DiscoverSection({ initialEvents, initialHasMore }: Props) {
               opacity: loading ? 0.6 : 1,
             }}
           >
-            {loading ? 'Laster...' : 'Vis flere events'}
+            {loading ? 'Loading…' : 'Load more'}
           </button>
         </div>
       )}

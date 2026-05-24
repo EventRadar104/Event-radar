@@ -140,7 +140,7 @@ export default async function EventDetailPage({ params }: PageProps) {
           </div>
           {event.ticket_url && (
             <a href={getTicketUrl(event.ticket_url) ?? '#'} target="_blank" rel="noopener noreferrer" style={{ background:'var(--green)', color:'#fff', border:'none', borderRadius:12, padding:'14px 28px', fontSize:16, fontWeight:500, textDecoration:'none', flexShrink:0 }}>
-              {event.is_free ? 'Se arrangement →' : 'Get tickets →'}
+              {event.is_free ? 'See event →' : 'Get tickets →'}
             </a>
           )}
         </div>
