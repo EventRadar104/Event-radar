@@ -22,7 +22,7 @@ export function MobileTabBar() {
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 300,
+        zIndex: 1000,
         background: 'rgba(250,250,248,.96)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
