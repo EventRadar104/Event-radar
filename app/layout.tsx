@@ -22,14 +22,29 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Event Radar — Norway',
-  description: 'Find concerts, sports, food, art and more across every city in Norway.',
+  title: 'Event Radar — Find events in Norway',
+  description: 'Concerts, sports, food, art and more — across every city in Norway.',
   openGraph: {
-    title: 'Event Radar — Norway',
-    description: 'Find your next favourite event across Norway.',
+    title: 'Event Radar — Find events in Norway',
+    description: 'Concerts, sports, food, art and more — across every city in Norway.',
+    url: 'https://eventradar.no',
     siteName: 'Event Radar',
-    locale: 'nb_NO',
+    images: [
+      {
+        url: 'https://eventradar.no/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Event Radar — Find events in Norway',
+      },
+    ],
+    locale: 'en_US',
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Event Radar — Find events in Norway',
+    description: 'Concerts, sports, food, art and more — across every city in Norway.',
+    images: ['https://eventradar.no/og-image.png'],
   },
   other: {
     'impact-site-verification': '787be7d9-82e4-4097-9fbd-af6b3a2433ca',

@@ -47,14 +47,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title: event.title,
       description: description.slice(0, 160),
-      images: event.cover_image_url ? [event.cover_image_url] : [],
+      images: event.cover_image_url ? [event.cover_image_url] : ['https://eventradar.no/og-image.png'],
       type: 'website',
+      url: `https://eventradar.no/events/${event.slug}`,
     },
     twitter: {
       card: 'summary_large_image',
       title: event.title,
       description: description.slice(0, 160),
-      images: event.cover_image_url ? [event.cover_image_url] : [],
+      images: event.cover_image_url ? [event.cover_image_url] : ['https://eventradar.no/og-image.png'],
     },
   }
 }
