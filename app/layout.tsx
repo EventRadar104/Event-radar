@@ -23,6 +23,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Event Radar — Find events in Norway',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
   description: 'Concerts, sports, food, art and more — across every city in Norway.',
   openGraph: {
     title: 'Event Radar — Find events in Norway',
