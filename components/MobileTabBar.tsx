@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 
 const tabs = [
   { href: '/search', label: 'Search',  icon: 'ti-search'    },
@@ -10,8 +11,24 @@ const tabs = [
   { href: '/trip',   label: 'Trip',    icon: 'ti-map'       },
 ]
 
+const THRESHOLD = 10
+
 export function MobileTabBar() {
   const pathname = usePathname()
+  const [hidden, setHidden] = useState(false)
+  const lastY = useRef(0)
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY
+      const delta = y - lastY.current
+      if (Math.abs(delta) < THRESHOLD) return
+      setHidden(y > 0 && delta > 0)
+      lastY.current = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
     <nav
@@ -26,6 +43,8 @@ export function MobileTabBar() {
         background: '#FAFAF8',
         borderTop: '1px solid var(--border)',
         padding: '6px 0 env(safe-area-inset-bottom, 12px)',
+        transform: hidden ? 'translateY(100%)' : 'translateY(0)',
+        transition: 'transform .25s ease',
       }}
       className="mobile-tab-bar"
     >
