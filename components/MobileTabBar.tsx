@@ -11,23 +11,46 @@ const tabs = [
   { href: '/trip',   label: 'Trip',    icon: 'ti-map'       },
 ]
 
-const THRESHOLD = 10
+const HIDE_THRESHOLD = 50   // px scrolled down continuously before hiding
+const SHOW_THRESHOLD = 20   // px scrolled up continuously before showing
+const DEBOUNCE_MS     = 100 // ms to wait after last scroll event
 
 export function MobileTabBar() {
   const pathname = usePathname()
   const [hidden, setHidden] = useState(false)
-  const lastY = useRef(0)
+  // Y position at the last state change — used to measure continuous distance
+  const baseY   = useRef(0)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const onScroll = () => {
-      const y = window.scrollY
-      const delta = y - lastY.current
-      if (Math.abs(delta) < THRESHOLD) return
-      setHidden(y > 0 && delta > 0)
-      lastY.current = y
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        const y = window.scrollY
+        const delta = y - baseY.current
+
+        if (y === 0) {
+          // Always show at the very top
+          setHidden(false)
+          baseY.current = 0
+          return
+        }
+
+        if (delta > HIDE_THRESHOLD) {
+          setHidden(true)
+          baseY.current = y
+        } else if (delta < -SHOW_THRESHOLD) {
+          setHidden(false)
+          baseY.current = y
+        }
+      }, DEBOUNCE_MS)
     }
+
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [])
 
   return (
@@ -45,6 +68,7 @@ export function MobileTabBar() {
         padding: '6px 0 env(safe-area-inset-bottom, 12px)',
         transform: hidden ? 'translateY(100%)' : 'translateY(0)',
         transition: 'transform .25s ease',
+        willChange: 'transform',
       }}
       className="mobile-tab-bar"
     >
