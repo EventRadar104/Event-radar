@@ -53,25 +53,28 @@ export async function searchEvents(params: SearchParams = {}) {
 }
 
 export async function getEventBySlug(slug: string) {
+  console.log('[getEventBySlug] called with slug:', slug)
   try {
     const supabase = await createClient()
     const cols = 'id, slug, title, description, starts_at, ends_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, show_attending, tags, organizer_name, category_slugs, category_names, status'
-    const { data: exact } = await supabase
+    const { data: exact, error: exactErr } = await supabase
       .from('events_with_details')
       .select(cols)
       .eq('slug', slug)
       .eq('status', 'published')
       .maybeSingle()
+    console.log('[getEventBySlug] eq result:', { data: exact, error: exactErr })
     if (exact) return exact as EventWithDetails
-    const { data: fallback } = await supabase
+    const { data: fallback, error: fallbackErr } = await supabase
       .from('events_with_details')
       .select(cols)
       .ilike('slug', slug)
       .eq('status', 'published')
       .maybeSingle()
+    console.log('[getEventBySlug] ilike result:', { data: fallback, error: fallbackErr })
     return (fallback ?? null) as EventWithDetails | null
   } catch (e) {
-    console.error('getEventBySlug exception:', e)
+    console.error('[getEventBySlug] exception:', e)
     return null
   }
 }
