@@ -216,12 +216,15 @@ export default function MapContent() {
     const supabase = createClient()
     const { city, when, date, dateFrom, dateTo } = initFiltersRef.current
     setLoading(true)
+    // Baseline: never show past events regardless of user date filters
+    const now = new Date().toISOString()
     let q = supabase
       .from('events_with_details')
       .select('id, title, slug, starts_at, is_free, price_from, cover_image_url, venue_id, venue_name, venue_city, venue_lat, venue_lng, category_slugs, category_names, save_count')
       .eq('status', 'published')
       .not('venue_lat', 'is', null)
       .not('venue_lng', 'is', null)
+      .gt('starts_at', now)
       .order('starts_at', { ascending: true })
     if (city) q = q.eq('venue_city', city)
     const range = getDateRange(when, date, dateFrom, dateTo)
