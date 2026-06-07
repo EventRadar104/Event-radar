@@ -220,7 +220,7 @@ export default function MapContent() {
     const now = new Date().toISOString()
     let q = supabase
       .from('events_with_details')
-      .select('id, title, slug, starts_at, is_free, price_from, cover_image_url, venue_id, venue_name, venue_city, venue_lat, venue_lng, category_slugs, category_names, save_count')
+      .select('id, title, slug, starts_at, is_free, price_from, cover_image_url, venue_id, venue_name, venue_city, venue_lat, venue_lng, category_slugs')
       .eq('status', 'published')
       .not('venue_lat', 'is', null)
       .not('venue_lng', 'is', null)
@@ -231,7 +231,8 @@ export default function MapContent() {
     if (range) {
       q = q.gte('starts_at', range.from.toISOString()).lte('starts_at', range.to.toISOString())
     }
-    q.then(({ data }) => {
+    q.then(({ data, error }) => {
+      if (error) console.error('Map query error:', error)
       setAllEvents((data ?? []) as EventWithDetails[])
       setLoading(false)
     })
@@ -469,12 +470,6 @@ export default function MapContent() {
           line-height: 1.35;
           color: var(--ink);
         }
-        .sidebar-card-cat {
-          font-size: 11px;
-          color: var(--green);
-          font-weight: 500;
-          margin-top: 1px;
-        }
         .sidebar-card-meta {
           font-size: 12px;
           color: var(--ink3);
@@ -484,12 +479,6 @@ export default function MapContent() {
           font-weight: 600;
           margin-top: 2px;
         }
-        .sidebar-card-saves {
-          font-size: 11px;
-          color: var(--ink4, #aaa);
-          margin-top: 1px;
-        }
-
         /* ── Map container ── */
         .map-container {
           position: relative;
@@ -612,9 +601,7 @@ export default function MapContent() {
 
                 {/* Event list */}
                 <div className="sidebar-list">
-                  {activeVenueGroup.events.map(event => {
-                    const catName = event.category_names?.[0] ?? null
-                    return (
+                  {activeVenueGroup.events.map(event => (
                       <a
                         key={event.id}
                         href={`/events/${event.slug ?? event.id}`}
@@ -630,9 +617,6 @@ export default function MapContent() {
                         </div>
                         <div className="sidebar-card-info">
                           <div className="sidebar-card-title">{event.title}</div>
-                          {catName && (
-                            <div className="sidebar-card-cat">{catName}</div>
-                          )}
                           <div className="sidebar-card-meta">{fmtShortDate(event.starts_at)}</div>
                           {event.venue_name && (
                             <div className="sidebar-card-meta" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -645,13 +629,9 @@ export default function MapContent() {
                           >
                             {fmtPrice(event)}
                           </div>
-                          {(event.save_count ?? 0) > 0 && (
-                            <div className="sidebar-card-saves">{event.save_count} saves</div>
-                          )}
                         </div>
                       </a>
-                    )
-                  })}
+                    ))}
                 </div>
               </>
             ) : (
