@@ -17,7 +17,7 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
 
 const OSLO = { lat: 59.9139, lng: 10.7522 }
 
-// How many px of the sheet peek above the bottom when collapsed
+// How many px of the mobile sheet peek above the bottom when collapsed
 const PEEK_PX = 180
 
 interface VenueGroup {
@@ -218,7 +218,7 @@ export default function MapContent() {
     setLoading(true)
     let q = supabase
       .from('events_with_details')
-      .select('id, title, slug, starts_at, is_free, price_from, cover_image_url, venue_id, venue_name, venue_city, venue_lat, venue_lng, category_slugs')
+      .select('id, title, slug, starts_at, is_free, price_from, cover_image_url, venue_id, venue_name, venue_city, venue_lat, venue_lng, category_slugs, category_names, save_count')
       .eq('status', 'published')
       .not('venue_lat', 'is', null)
       .not('venue_lng', 'is', null)
@@ -323,6 +323,179 @@ export default function MapContent() {
             height: calc(100dvh - 60px - 70px - env(safe-area-inset-bottom, 0px));
           }
         }
+
+        /* ── Split body: sidebar + map ── */
+        .map-body {
+          display: flex;
+          flex: 1;
+          min-height: 0;
+          flex-direction: row;
+        }
+
+        /* ── Desktop sidebar ── */
+        .venue-sidebar {
+          width: 380px;
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: column;
+          border-right: 1px solid var(--border);
+          background: var(--white);
+          overflow: hidden;
+        }
+        @media (max-width: 640px) {
+          .venue-sidebar { display: none; }
+        }
+
+        .sidebar-header {
+          flex-shrink: 0;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 16px 16px 12px;
+          border-bottom: 1px solid var(--border);
+        }
+        .sidebar-header-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--ink);
+          line-height: 1.3;
+        }
+        .sidebar-header-sub {
+          font-size: 12px;
+          color: var(--ink3);
+          margin-top: 3px;
+        }
+        .sidebar-badge {
+          display: inline-flex;
+          align-items: center;
+          background: var(--green);
+          color: #fff;
+          font-size: 11px;
+          font-weight: 700;
+          border-radius: 20px;
+          padding: 2px 8px;
+          margin-left: 6px;
+          vertical-align: middle;
+          white-space: nowrap;
+        }
+        .sidebar-close-btn {
+          flex-shrink: 0;
+          background: var(--stone);
+          border: none;
+          border-radius: 50%;
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 15px;
+          color: var(--ink);
+          margin-top: 1px;
+        }
+        .sidebar-empty {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 32px 24px;
+          color: var(--ink3);
+          text-align: center;
+        }
+        .sidebar-empty-icon {
+          font-size: 32px;
+          opacity: .5;
+        }
+        .sidebar-empty-text {
+          font-size: 14px;
+          line-height: 1.5;
+        }
+        .sidebar-list {
+          flex: 1;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+        }
+
+        /* ── Sidebar event card ── */
+        .sidebar-card {
+          display: flex;
+          gap: 12px;
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--border);
+          text-decoration: none;
+          color: inherit;
+          border-left: 3px solid transparent;
+          transition: background 0.12s, border-left-color 0.12s;
+        }
+        .sidebar-card:hover {
+          background: var(--stone, #f7f7f5);
+          border-left-color: var(--green);
+        }
+        .sidebar-card-thumb {
+          width: 110px;
+          height: 80px;
+          border-radius: 10px;
+          overflow: hidden;
+          flex-shrink: 0;
+          background: var(--stone);
+        }
+        .sidebar-card-thumb img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .sidebar-card-info {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .sidebar-card-title {
+          font-size: 14px;
+          font-weight: 600;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          line-height: 1.35;
+          color: var(--ink);
+        }
+        .sidebar-card-cat {
+          font-size: 11px;
+          color: var(--green);
+          font-weight: 500;
+          margin-top: 1px;
+        }
+        .sidebar-card-meta {
+          font-size: 12px;
+          color: var(--ink3);
+        }
+        .sidebar-card-price {
+          font-size: 12px;
+          font-weight: 600;
+          margin-top: 2px;
+        }
+        .sidebar-card-saves {
+          font-size: 11px;
+          color: var(--ink4, #aaa);
+          margin-top: 1px;
+        }
+
+        /* ── Map container ── */
+        .map-container {
+          position: relative;
+          flex: 1;
+          min-width: 0;
+          min-height: 0;
+        }
+
+        /* ── Mobile bottom sheet (unchanged) ── */
         .venue-sheet {
           position: fixed;
           bottom: 0;
@@ -336,6 +509,9 @@ export default function MapContent() {
           border-radius: 16px 16px 0 0;
           box-shadow: 0 -4px 32px rgba(0,0,0,.14);
           overscroll-behavior: none;
+        }
+        @media (min-width: 641px) {
+          .venue-sheet { display: none; }
         }
         @media (max-width: 640px) {
           .venue-sheet {
@@ -402,26 +578,111 @@ export default function MapContent() {
           </div>
         )}
 
-        {/* ── Map (fills all remaining height) ─────────────────────── */}
-        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-          {loading && (
-            <div style={{
-              position: 'absolute', inset: 0, zIndex: 5,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--stone)',
-            }}>
+        {/* ── Split body: sidebar (desktop) + map ───────────────────── */}
+        <div className="map-body">
+
+          {/* ── Desktop sidebar ───────────────────────────────────── */}
+          <div className="venue-sidebar">
+            {activeVenueGroup ? (
+              <>
+                {/* Sidebar header */}
+                <div className="sidebar-header">
+                  <div style={{ minWidth: 0 }}>
+                    <div className="sidebar-header-title">
+                      {activeVenueGroup.venueName ?? 'Venue'}
+                      <span className="sidebar-badge">
+                        {activeVenueGroup.events.length} event{activeVenueGroup.events.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {activeVenueGroup.city && (
+                      <div className="sidebar-header-sub">{activeVenueGroup.city}</div>
+                    )}
+                  </div>
+                  <button
+                    className="sidebar-close-btn"
+                    onClick={() => setActiveVenueId(null)}
+                    aria-label="Clear selection"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Event list */}
+                <div className="sidebar-list">
+                  {activeVenueGroup.events.map(event => {
+                    const catName = event.category_names?.[0] ?? null
+                    return (
+                      <a
+                        key={event.id}
+                        href={`/events/${event.slug ?? event.id}`}
+                        className="sidebar-card"
+                      >
+                        <div
+                          className={`sidebar-card-thumb${!event.cover_image_url ? ` ${categoryPhClass(event.category_slugs)}` : ''}`}
+                        >
+                          {event.cover_image_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={event.cover_image_url} alt={event.title} />
+                          )}
+                        </div>
+                        <div className="sidebar-card-info">
+                          <div className="sidebar-card-title">{event.title}</div>
+                          {catName && (
+                            <div className="sidebar-card-cat">{catName}</div>
+                          )}
+                          <div className="sidebar-card-meta">{fmtShortDate(event.starts_at)}</div>
+                          {event.venue_name && (
+                            <div className="sidebar-card-meta" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {event.venue_name}
+                            </div>
+                          )}
+                          <div
+                            className="sidebar-card-price"
+                            style={{ color: event.is_free ? 'var(--green)' : 'var(--ink2)' }}
+                          >
+                            {fmtPrice(event)}
+                          </div>
+                          {(event.save_count ?? 0) > 0 && (
+                            <div className="sidebar-card-saves">{event.save_count} saves</div>
+                          )}
+                        </div>
+                      </a>
+                    )
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="sidebar-empty">
+                <div className="sidebar-empty-icon">📍</div>
+                <div className="sidebar-empty-text">
+                  Click a pin on the map<br />to see events at that venue
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Map ─────────────────────────────────────────────────── */}
+          <div className="map-container">
+            {loading && (
               <div style={{
-                width: 28, height: 28, borderRadius: '50%',
-                border: '3px solid var(--border)', borderTopColor: 'var(--green)',
-                animation: 'spin .8s linear infinite',
-              }} />
-            </div>
-          )}
-          <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
+                position: 'absolute', inset: 0, zIndex: 5,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--stone)',
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  border: '3px solid var(--border)', borderTopColor: 'var(--green)',
+                  animation: 'spin .8s linear infinite',
+                }} />
+              </div>
+            )}
+            <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
+          </div>
+
         </div>
       </div>
 
-      {/* ── Venue bottom sheet (fixed overlay, shown on pin tap) ───── */}
+      {/* ── Mobile bottom sheet (fixed overlay, shown on pin tap) ───── */}
       {activeVenueGroup && (
         <VenueBottomSheet
           group={activeVenueGroup}
@@ -432,7 +693,7 @@ export default function MapContent() {
   )
 }
 
-// ─── Draggable bottom sheet ────────────────────────────────────────────────
+// ─── Draggable mobile bottom sheet (unchanged) ────────────────────────────────
 
 function VenueBottomSheet({
   group,
@@ -646,6 +907,7 @@ function VenueBottomSheet({
             <a
               key={event.id}
               href={`/events/${event.slug ?? event.id}`}
+              onPointerDown={e => e.stopPropagation()}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: full ? '14px 16px' : '12px 16px',
