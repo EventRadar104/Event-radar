@@ -646,6 +646,7 @@ function VenueBottomSheet({
             <a
               key={event.id}
               href={`/events/${event.slug ?? event.id}`}
+              onPointerDown={e => e.stopPropagation()}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: full ? '14px 16px' : '12px 16px',
