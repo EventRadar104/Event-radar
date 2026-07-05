@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { upcomingOrOngoing } from '@/lib/eventFilters'
 import type {
   EventWithDetails,
   GroupEventWithDetails,
@@ -32,14 +33,15 @@ export async function searchEvents(params: SearchParams = {}) {
     }
     const results = (data ?? []) as EventWithDetails[]
 
-    // Full-text search doesn't index venue names — fall back to ilike on venue_name
+    // Belt-and-braces fallback in case the RPC's venue-name matching misses a case —
+    // search_events() already matches venue names directly (see venue_search migration).
     if (results.length === 0 && params.q) {
       const { data: venueData } = await supabase
         .from('events_with_details')
         .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
         .eq('status', 'published')
         .ilike('venue_name', `%${params.q}%`)
-        .gte('starts_at', params.from || new Date().toISOString())
+        .or(upcomingOrOngoing(params.from || new Date().toISOString()))
         .order('starts_at', { ascending: true })
         .limit(50)
       return (venueData ?? []) as EventWithDetails[]
@@ -401,7 +403,7 @@ export async function getTrendingEvent() {
       .select('id, slug, title, description, starts_at, ends_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, show_attending, organizer_name, category_slugs, category_names, status')
       .in('id', rankedIds)
       .eq('status', 'published')
-      .gt('starts_at', new Date().toISOString())
+      .or(upcomingOrOngoing())
       .not('cover_image_url', 'is', null)
       .eq('hide_from_featured', false)
 
@@ -446,7 +448,7 @@ export async function getHotEvents(excludeId = '', limit = 10, page = 1) {
       .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
       .in('id', rankedIds)
       .eq('status', 'published')
-      .gt('starts_at', new Date().toISOString())
+      .or(upcomingOrOngoing())
       .not('cover_image_url', 'is', null)
       .eq('hide_from_featured', false)
     if (!data) return []
@@ -477,6 +479,7 @@ export async function getWeekendEvents(limit = 10, page = 1) {
       .eq('status', 'published')
       .gte('starts_at', sat.toISOString())
       .lte('starts_at', sun.toISOString())
+      .or(upcomingOrOngoing())
       .order('starts_at', { ascending: true })
       .range(offset, offset + limit - 1)
     return (data ?? []) as EventWithDetails[]
@@ -493,7 +496,7 @@ export async function getFreeEvents(limit = 10) {
       .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
       .eq('status', 'published')
       .eq('is_free', true)
-      .gt('starts_at', new Date().toISOString())
+      .or(upcomingOrOngoing())
       .order('starts_at', { ascending: true })
       .limit(limit)
     return (data ?? []) as EventWithDetails[]
@@ -522,7 +525,7 @@ export async function getDiscoverEvents(limit = 50, offset = 0) {
       .from('events_with_details')
       .select('id, slug, title, starts_at, cover_image_url, is_free, price_from, price_to, ticket_url, venue_name, venue_city, category_slugs')
       .eq('status', 'published')
-      .gt('starts_at', new Date().toISOString())
+      .or(upcomingOrOngoing())
       .order('starts_at', { ascending: true })
       .range(offset, offset + limit - 1)
     return (data ?? []) as EventWithDetails[]

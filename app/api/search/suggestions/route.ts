@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { upcomingOrOngoing } from '@/lib/eventFilters'
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
       .from('events_with_details')
       .select('id, title, slug, venue_name, starts_at')
       .eq('status', 'published')
-      .gt('starts_at', now)
+      .or(upcomingOrOngoing(now))
       .ilike('title', `%${q}%`)
       .order('starts_at', { ascending: true })
       .limit(5),
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
       .from('events_with_details')
       .select('venue_name, venue_city')
       .eq('status', 'published')
-      .gt('starts_at', now)
+      .or(upcomingOrOngoing(now))
       .ilike('venue_name', `%${q}%`)
       .not('venue_name', 'is', null)
       .limit(20),
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
       .from('events_with_details')
       .select('venue_city')
       .eq('status', 'published')
-      .gt('starts_at', now)
+      .or(upcomingOrOngoing(now))
       .ilike('venue_city', `%${q}%`)
       .not('venue_city', 'is', null)
       .limit(20),

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { upcomingOrOngoing } from '@/lib/eventFilters'
 import type { Group, GroupEventWithDetails, GroupMemberWithProfile } from '@/lib/types'
 
 interface Props {
@@ -180,6 +181,7 @@ export function GroupDetailClient({ group, initialEvents, initialMembers, userId
       .from('events_with_details')
       .select('id, title, starts_at, venue_city, venue_name, cover_image_url')
       .eq('status', 'published')
+      .or(upcomingOrOngoing())
       .ilike('title', `%${q}%`)
       .limit(8)
     setSearchResults((data ?? []).map(e => ({

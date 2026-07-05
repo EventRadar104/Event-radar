@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 import { createClient } from '@/lib/supabase/client'
+import { upcomingOrOngoing } from '@/lib/eventFilters'
 import type { EventWithDetails } from '@/lib/types'
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -224,7 +225,7 @@ export default function MapContent() {
       .eq('status', 'published')
       .not('venue_lat', 'is', null)
       .not('venue_lng', 'is', null)
-      .gt('starts_at', now)
+      .or(upcomingOrOngoing(now))
       .order('starts_at', { ascending: true })
     if (city) q = q.eq('venue_city', city)
     const range = getDateRange(when, date, dateFrom, dateTo)

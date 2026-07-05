@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { upcomingOrOngoing } from '@/lib/eventFilters'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     .from('events_with_details')
     .select('*')
     .eq('status', 'published')
-    .gt('starts_at', fromDate)
+    .or(upcomingOrOngoing(fromDate))
     .not('venue_lat', 'is', null)
     .not('venue_lng', 'is', null)
     .gte('venue_lat', south)
