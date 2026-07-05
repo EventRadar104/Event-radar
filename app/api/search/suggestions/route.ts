@@ -20,14 +20,12 @@ export async function GET(req: NextRequest) {
       .ilike('title', `%${q}%`)
       .order('starts_at', { ascending: true })
       .limit(5),
-    supabase
-      .from('events_with_details')
-      .select('venue_name, venue_city')
-      .eq('status', 'published')
-      .or(upcomingOrOngoing(now))
-      .ilike('venue_name', `%${q}%`)
-      .not('venue_name', 'is', null)
-      .limit(20),
+    // Goes through the same search_venue_suggestions() RPC that backs
+    // search_events()'s venue matching, so a suggested venue always has at
+    // least one result when selected (handles apostrophe/punctuation
+    // mismatches the same way on both sides — see
+    // 20260705010000_search_events_host_and_punctuation.sql).
+    supabase.rpc('search_venue_suggestions', { query_text: q, result_limit: 20 }),
     supabase
       .from('events_with_details')
       .select('venue_city')
